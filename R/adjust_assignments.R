@@ -11,6 +11,9 @@
 #' @importFrom data.table as.data.table data.table tstrsplit
 #' @importFrom Biostrings vmatchPattern readAAStringSet
 #' @importFrom IRanges elementNROWS
+#'
+#' @export
+#'
 adjustProteinAssignments = function(quantification_data, fasta_db_path,
                                     protein_column = "ProteinName",
                                     peptide_column = "PeptideSequence",
