@@ -59,6 +59,7 @@ getClusterStatistics = function(quantification_data, merge = FALSE) {
                                             NumProteins = data.table::uniqueN(ProteinName),
                                             NumPeptides = data.table::uniqueN(PeptideSequence)),
                                      by = "Cluster"]
+    statistics = unique(statistics)
     statistics[, TotalSize := NumProteins + NumPeptides]
     statistics[, NumProteinsPerPeptide := data.table::uniqueN(ProteinName),
                by = "PeptideSequence"]
@@ -68,6 +69,7 @@ getClusterStatistics = function(quantification_data, merge = FALSE) {
     statistics[, HasUnique := any(IsUnique), by = "ProteinName"]
     statistics[, AnyHasUnique := any(HasUnique), by = "Cluster"]
     statistics[, EachHasUnique := all(HasUnique), by = "Cluster"]
+
 
     if (merge) {
         statistics = merge(quantification_data, statistics,
