@@ -5,7 +5,7 @@
 #' @param protein_column name of a column with protein names.
 #' @param peptide_column name of a column with peptide sequences.
 #' @param n_cores number of cores that will be used while searching the database.
-#' @param keep_modified if TRUE, a column that stores sequences of unmodified
+#' @param keep_unmodified if TRUE, a column that stores sequences of unmodified
 #' peptides will be added to output data
 #'
 #' @importFrom data.table as.data.table data.table tstrsplit

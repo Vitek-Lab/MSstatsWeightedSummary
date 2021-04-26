@@ -24,7 +24,7 @@ adjustProteinAssignments(
 
 \item{n_cores}{number of cores that will be used while searching the database.}
 
-\item{keep_modified}{if TRUE, a column that stores sequences of unmodified
+\item{keep_unmodified}{if TRUE, a column that stores sequences of unmodified
 peptides will be added to output data}
 }
 \description{

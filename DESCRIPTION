@@ -13,4 +13,12 @@ RoxygenNote: 7.0.2
 Imports: 
     parallel,
     MSstatsTMT,
-    IRanges
+    IRanges,
+    CVXR,
+    NbClust,
+    ggplot2,
+    stringr,
+    data.table,
+    igraph,
+    Biostrings,
+    proxy
