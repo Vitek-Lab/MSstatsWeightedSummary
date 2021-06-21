@@ -35,20 +35,32 @@ getMSstatsSummary = function(input, use_shared, use_discordant) {
             input = input[!(IsDiscordant)]
         }
     }
-    if (use_shared) {
-        result = lapply(split(input, input[, .(ProteinName)]),
-                        function(x) MSstatsTMT::proteinSummarization(
-                            unique(x[, .(ProteinName, PeptideSequence, Charge, PSM, Channel,
-                                         BioReplicate, Condition, Run, Mixture, TechRepMixture, Intensity)]),
-                            global_norm = FALSE))
-        result = rbindlist(result)
-    } else {
-        input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
-        input = input[(IsUnique)]
-        input = unique(input[, .(ProteinName, PeptideSequence, Charge, PSM, Channel,
-                                 BioReplicate, Condition, Run, Mixture, TechRepMixture, Intensity)])
-        result = MSstatsTMT::proteinSummarization(input, global_norm = FALSE)
-    }
+    input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
+    input_split = split(input, input$ProteinName)
+    initial_summary = rbindlist(lapply(input_split, function(x) {
+        x$Intensity = 2 ^ x$log2IntensityNormalized
+        if (any(x$IsUnique)) {
+            proteinSummarization(x[(IsUnique)], global_norm = FALSE)
+        } else {
+            proteinSummarization(x, global_norm = FALSE)
+        }
+    }))
+    initial_summary
+    # if (use_shared) {
+    #     result = lapply(split(input, input[, .(ProteinName)]),
+    #                     function(x) MSstatsTMT::proteinSummarization(
+    #                         unique(x[, .(ProteinName, PeptideSequence, Charge, PSM, Channel,
+    #                                      BioReplicate, Condition, Run, Mixture, TechRepMixture, Intensity)]),
+    #                         global_norm = FALSE))
+    #     result = rbindlist(result)
+    # } else {
+    #     input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
+    #     input = input[(IsUnique)]
+    #     input = unique(input[, .(ProteinName, PeptideSequence, Charge, PSM, Channel,
+    #                              BioReplicate, Condition, Run, Mixture, TechRepMixture, Intensity)])
+    #     result = MSstatsTMT::proteinSummarization(input, global_norm = FALSE)
+    # }
+
     result
 }
 
@@ -76,7 +88,7 @@ getOptimSummary = function(input, design_type, use_discordant,
 
     if (norm == "Huber" & adaptive_huber) {
         M = norm_parameter
-        prot_values = solution$getValue(variables(optimization_problem)[[1]])
+        prot_values = solution$getValue(CVXR::variables(optimization_problem)[[1]])
         raw_resid = design_matrix %*% prot_values - y
         huber_resid = ifelse(abs(raw_resid) < M, 0.5 * raw_resid ^ 2, M * (abs(raw_resid) - 0.5 * M))
         M = median(huber_resid)
@@ -130,7 +142,7 @@ getOptimSummary = function(input, design_type, use_discordant,
                                    input) {
     num_channels = uniqueN(input$Channel)
     num_proteins = uniqueN(input$ProteinName)
-    protein_values = solution$getValue(variables(optimization_problem)[[1]])
+    protein_values = solution$getValue(CVXR::variables(optimization_problem)[[1]])
     baseline = protein_values[length(protein_values)]
     protein_values = baseline + protein_values[1:(num_channels * num_proteins)]
     data.table(ProteinName = rep(unique(input$ProteinName), each = num_channels),

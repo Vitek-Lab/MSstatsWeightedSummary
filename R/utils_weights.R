@@ -53,20 +53,21 @@ getAllWeights = function(input, method, norm, norm_parameter) {
         constraint_matrix_full[i, psms_cols == psm] = 1
     }
 
-    params_full = Variable(n_params)
+    params_full = CVXR::Variable(n_params)
     positive_matrix = diag(1, n_params - 1)
     positive_matrix = rbind(positive_matrix, 0)
     positive_matrix = cbind(positive_matrix, 0)
-    constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-                            constraint_matrix_full %*% params_full == rep(1, n_conditions))
+    # constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
+    #                         constraint_matrix_full %*% params_full == rep(1, n_conditions))
+    constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params))
     if (norm == "p_norm") {
-        obj = CVXR::p_norm(x_full %*% params_full - y_full, norm_parameter)
+        obj = CVXR::p_norm(x_full %*% params_full - y_full, norm_parameter) + CVXR::p_norm(params_full, 1)
     } else {
-        obj = CVXR::huber(x_full %*% params_full - y_full, norm_parameter)
+        obj = CVXR::huber(x_full %*% params_full - y_full, norm_parameter) + CVXR::p_norm(params_full, 1)
     }
     prob_con = CVXR::Problem(CVXR::Minimize(obj), constraints_full)
     sol_con = CVXR::solve(prob_con)
-    alphas = as.vector(sol_con$getValue(variables(prob_con)[[1]]))
+    alphas = as.vector(sol_con$getValue(CVXR::variables(prob_con)[[1]]))
 
     result = data.table::data.table(
         ProteinName = stringr::str_extract(cols, "BRD[0-9]_HUMAN"), # TODO: general protein
@@ -79,7 +80,7 @@ getAllWeights = function(input, method, norm, norm_parameter) {
 
 #' Get weights for a single PSM
 #' @keywords internal
-getPPWeights = function(psm_data, intercept = TRUE, norm = "p_norm",
+getPPWeights = function(psm_data, intercept = FALSE, norm = "p_norm",
                         norm_parameter = 1) {
     wide = data.table::dcast(psm_data, log2IntensityNormalized + Channel ~ ProteinName,
                              value.var = "Abundance", fill = 0)
@@ -105,7 +106,7 @@ getPPWeights = function(psm_data, intercept = TRUE, norm = "p_norm",
 
 #' Get optimization problem for weights estimation
 #' @keywords internal
-.getWeightsOptimProblem = function(wide, intercept = TRUE, norm = "p_norm",
+.getWeightsOptimProblem = function(wide, intercept = FALSE, norm = "p_norm",
                                    norm_parameter = 1) {
     num_params = ncol(wide) - 2
     x_m = as.matrix(wide[, 3:ncol(wide), with = FALSE])
@@ -118,15 +119,16 @@ getPPWeights = function(psm_data, intercept = TRUE, norm = "p_norm",
     }
     y = wide$log2IntensityNormalized
     if (norm == "p_norm") {
-        objective = CVXR::Minimize(CVXR::p_norm(x_m %*% params - y, p = norm_parameter))
+        objective = CVXR::Minimize(CVXR::p_norm(x_m %*% params - y, p = norm_parameter)) #+ CVXR::p_norm(params, 1))
     } else if (norm == "Huber") {
-        objective = CVXR::Minimize(sum(CVXR::huber(x_m %*% params - y, M = norm_parameter)))
+        objective = CVXR::Minimize(sum(CVXR::huber(x_m %*% params - y, M = norm_parameter)))# + CVXR::p_norm(params, 1))
     }
     constraints = list(matrix(c(rep(1, num_params),
                                 rep(0, as.integer(intercept))),
                               nrow = 1) %*% params == matrix(1, ncol = 1),
                        params >= rep(0, ncol(x_m)))
     prob = CVXR::Problem(objective, constraints)
+    # prob = CVXR::Problem(objective)
     prob
 }
 
@@ -135,7 +137,7 @@ getPPWeights = function(psm_data, intercept = TRUE, norm = "p_norm",
 #' @keywords internal
 .processOptimSolution = function(solution, problem, num_proteins) {
     if (solution$status == "optimal") {
-        weights = solution$getValue(variables(problem)[[1]])
+        weights = solution$getValue(CVXR::variables(problem)[[1]])
         weights = weights[1:num_proteins]
         status = "success"
     } else {

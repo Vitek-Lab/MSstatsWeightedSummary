@@ -81,7 +81,8 @@ getRobustSummarySingleRun = function(input,
     alphas_list = vector("list", max_iter)
     input_loop = copy(input)
     input_loop = unique(input_loop[, .(ProteinName, PSM, Channel, log2IntensityNormalized, Weight)])
-    num_alpha_params = uniqueN(input[, .(ProteinName, PSM)])
+    ppsm = unique(input[, .(ProteinName, PSM)])
+    num_alpha_params = uniqueN(ppsm)
     current_alphas = rep(1, num_alpha_params)
     previous_alphas = rep(0, num_alpha_params)
     initial_summary = getInitialSummary(input, method = initial_summary_method,
@@ -95,19 +96,25 @@ getRobustSummarySingleRun = function(input,
     while (sum(abs(current_alphas - previous_alphas)) > tolerance) {
         previous_alphas = current_alphas
         alphas_df = getAllWeights(input_loop, weights_method, norm, norm_parameter)
-        alphas_list[[iter]] = alphas_df
-        input_loop = merge(input_loop[, list(ProteinName, PSM, Channel,
-                                             log2IntensityNormalized)],
-                           alphas_df, by = c("ProteinName", "PSM"))
-        new_abundances = getOptimSummary(input_loop, "short", TRUE,
-                                         norm, norm_parameter, TRUE,
-                                         adaptive_huber)
+        alphas_df_round = alphas_df[Weight > 0.05]
+        alphas_df_round[, Weight := Weight / sum(Weight), by = "PSM"]
+        alphas_list[[iter]] = alphas_df_round
+
+        input_abundances = merge(input_loop[, list(ProteinName, PSM, Channel,
+                                                   log2IntensityNormalized)],
+                                 alphas_df_round, by = c("ProteinName", "PSM"))
+        new_abundances = SharedPeptidesExplorer:::getOptimSummary(input_abundances, "short", TRUE,
+                                                                  norm, norm_parameter, TRUE,
+                                                                  adaptive_huber)
         if (norm == "Huber" & adaptive_huber) {
             norm_parameter = attr(new_abundances, "M")
         }
         input_loop = merge(input_loop[, list(ProteinName, PSM, Channel,
                                              log2IntensityNormalized)],
                            new_abundances, by = c("ProteinName", "Channel"))
+        alphas_df = merge(alphas_df, ppsm, all.x = TRUE, all.y = TRUE,
+                          by = c("ProteinName", "PSM"))
+        alphas_df[, Weight := ifelse(is.na(Weight), 0, Weight)]
         current_alphas = alphas_df$Weight
 
         if (iter >= max_iter) {
