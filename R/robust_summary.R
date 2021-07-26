@@ -24,19 +24,17 @@
 #' @export
 #'
 getRobustSummary = function(input,
-                            method_label,
-                            design_type = "short",
+                            method_label= "",
                             norm = "p_norm", norm_parameter = 1,
-                            use_weights = TRUE,
                             weights_method = "separate",
                             adaptive_huber = TRUE,
                             initial_summary_method = "msstats",
                             use_discordant = TRUE,
-                            use_shared_initial = FALSE,
+                            equalize_protein_features = FALSE,
                             tolerance = 1e-3,
                             max_iter = 10) {
     if (!is.element("Weight", colnames(input))) {
-        input$Weight = 1
+        input[, Weight := 1 / uniqueN(ProteinName), by = "PSM"]
     }
     if (any(!is.finite(input$log2IntensityNormalized) | is.na(input$log2IntensityNormalized))) {
         input[,
@@ -47,11 +45,12 @@ getRobustSummary = function(input,
     }
     input_by_run = split(input, input$Run)
     output_by_run = lapply(input_by_run, function(x) {
-        getRobustSummarySingleRun(x, method_label, design_type,
-                                  norm, norm_parameter, use_weights, weights_method,
-                                  adaptive_huber,
+        getRobustSummarySingleRun(x, method_label,
+                                  norm, norm_parameter,
+                                  weights_method, adaptive_huber,
                                   initial_summary_method, use_discordant,
-                                  use_shared_initial, tolerance, max_iter)
+                                  equalize_protein_features,
+                                  tolerance, max_iter)
     })
     summarized_output = rbindlist(lapply(output_by_run, function(x) x$summary))
     alphas_list = lapply(output_by_run, function(x) x$alpha_history)
@@ -66,14 +65,12 @@ getRobustSummary = function(input,
 #' @keywords internal
 getRobustSummarySingleRun = function(input,
                                      method_label,
-                                     design_type = "short",
                                      norm = "p_norm", norm_parameter = 1,
-                                     use_weights = TRUE,
                                      weights_method = "all",
                                      adaptive_huber = TRUE,
                                      initial_summary_method = "msstats",
                                      use_discordant = TRUE,
-                                     use_shared_initial = FALSE,
+                                     equalize_protein_features = FALSE,
                                      tolerance = 1e-3,
                                      max_iter = 10) {
     annotation = unique(input[, list(Run, Mixture, TechRepMixture,
@@ -95,17 +92,18 @@ getRobustSummarySingleRun = function(input,
     alpha_diffs = vector("numeric", max_iter)
     while (sum(abs(current_alphas - previous_alphas)) > tolerance) {
         previous_alphas = current_alphas
-        alphas_df = getAllWeights(input_loop, weights_method, norm, norm_parameter)
-        alphas_df_round = alphas_df[Weight > 0.05]
+        alphas_df = getAllWeights(input_loop, weights_method, norm, norm_parameter,
+                                  equalize_protein_features)
+        alphas_df_round = alphas_df[Weight > 0.01]
         alphas_df_round[, Weight := Weight / sum(Weight), by = "PSM"]
         alphas_list[[iter]] = alphas_df_round
 
         input_abundances = merge(input_loop[, list(ProteinName, PSM, Channel,
                                                    log2IntensityNormalized)],
                                  alphas_df_round, by = c("ProteinName", "PSM"))
-        new_abundances = SharedPeptidesExplorer:::getOptimSummary(input_abundances, "short", TRUE,
-                                                                  norm, norm_parameter, TRUE,
-                                                                  adaptive_huber)
+        new_abundances = getOptimSummary(input_abundances, "short", TRUE,
+                                         norm, norm_parameter, TRUE,
+                                         adaptive_huber)
         if (norm == "Huber" & adaptive_huber) {
             norm_parameter = attr(new_abundances, "M")
         }

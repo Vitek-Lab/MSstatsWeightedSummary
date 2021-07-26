@@ -14,7 +14,7 @@
 #' @export
 #'
 getInitialSummary = function(input, method, use_discordant, use_shared, norm, norm_parameter) {
-    if (method == "mstats") {
+    if (method == "msstats") {
         result = getMSstatsSummary(input, use_shared, use_discordant)
     } else {
         result = getOptimSummary(input, "short", use_discordant, norm,
@@ -40,28 +40,14 @@ getMSstatsSummary = function(input, use_shared, use_discordant) {
     initial_summary = rbindlist(lapply(input_split, function(x) {
         x$Intensity = 2 ^ x$log2IntensityNormalized
         if (any(x$IsUnique)) {
-            proteinSummarization(x[(IsUnique)], global_norm = FALSE)
+            proteinSummarization(x[(IsUnique)], global_norm = FALSE,
+                                 use_log_file = FALSE, verbose = FALSE)$ProteinLevelData
         } else {
-            proteinSummarization(x, global_norm = FALSE)
+            proteinSummarization(x, global_norm = FALSE,
+                                 use_log_file = FALSE, verbose = FALSE)$ProteinLevelData
         }
     }))
     initial_summary
-    # if (use_shared) {
-    #     result = lapply(split(input, input[, .(ProteinName)]),
-    #                     function(x) MSstatsTMT::proteinSummarization(
-    #                         unique(x[, .(ProteinName, PeptideSequence, Charge, PSM, Channel,
-    #                                      BioReplicate, Condition, Run, Mixture, TechRepMixture, Intensity)]),
-    #                         global_norm = FALSE))
-    #     result = rbindlist(result)
-    # } else {
-    #     input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
-    #     input = input[(IsUnique)]
-    #     input = unique(input[, .(ProteinName, PeptideSequence, Charge, PSM, Channel,
-    #                              BioReplicate, Condition, Run, Mixture, TechRepMixture, Intensity)])
-    #     result = MSstatsTMT::proteinSummarization(input, global_norm = FALSE)
-    # }
-
-    result
 }
 
 

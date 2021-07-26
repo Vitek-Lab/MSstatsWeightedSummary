@@ -5,21 +5,19 @@
 #' weights for each PSM separately
 #' @param norm "p_norm" or "huber"
 #' @param norm_parameter p for norm=="p_norm", M for norm=="Huber"
+#' @param equalize_protein_features if TRUE, all features in a protein group
+#' that belong to a given protein will share weight parameter
 #'
 #' @return data.table
 #'
 #' @export
 #'
-getAllWeights = function(input, method, norm, norm_parameter) {
+getAllWeights = function(input, method, norm, norm_parameter,
+                         equalize_protein_features) {
     if (method == "all") {
-        centered_summaries = unique(input[, .(ProteinName, Channel, Abundance)])
-        centered_summaries[, AbundanceNew := Abundance - min(Abundance, na.rm = TRUE)]
-        input = merge(input, centered_summaries[, .(ProteinName, Channel, AbundanceNew)],
-                      by = c("ProteinName", "Channel"))
-        input[, CenteredIntensity := log2IntensityNormalized - min(log2IntensityNormalized, na.rm = TRUE),
-              by = c("ProteinName", "PSM")]
         input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
-        alphas_shared = .getWeightsCombined(input[!(IsUnique)], norm, norm_parameter)
+        alphas_shared = .getWeightsCombined(input[!(IsUnique)], norm, norm_parameter,
+                                            equalize_protein_features)
         alphas_unique = unique(input[(IsUnique), .(ProteinName, PSM, Weight = 1)])
         alphas = rbind(alphas_shared, alphas_unique)
     } else {
@@ -34,16 +32,33 @@ getAllWeights = function(input, method, norm, norm_parameter) {
 
 #' Get weights based on joint optimization (not per PSM)
 #' @keywords internal
-.getWeightsCombined = function(input, norm = "p_norm", norm_parameter = 1) {
-    wide = data.table::dcast(input, CenteredIntensity + Channel ~ ProteinName + PSM,
-                       value.var = "AbundanceNew", fill = 0)
-    y_full = wide$CenteredIntensity
-    x_full = as.matrix(wide[, -(1:2)])
-    x_full = cbind(x_full, 1)
+.getWeightsCombined = function(input, norm = "p_norm", norm_parameter = 1,
+                               equalize_protein_features = FALSE) {
+    intensities_tbl = unique(input[, .(PSM, Channel, log2IntensityNormalized)])
+    psms_intercept_tbl = unique(input[, .(PSM, Channel, ProteinName, Present = 1)])
+    psms_intercept_tbl = dcast(psms_intercept_tbl,
+                               PSM + Channel ~ PSM + ProteinName, value.var = "Present", fill = 0)
+    colnames(psms_intercept_tbl)[3:ncol(psms_intercept_tbl)] = paste0("int_", 1:(ncol(psms_intercept_tbl) - 2))
+    psms_protein_tbl = unique(input[, .(PSM, ProteinName, Channel, Abundance)])
+    psms_protein_tbl = dcast(psms_protein_tbl,
+                             PSM + Channel ~ PSM + ProteinName,
+                             value.var = "Abundance", fill = 0)
+    wide = merge(
+        merge(psms_intercept_tbl, intensities_tbl,
+              by = c("PSM", "Channel"), all.x = T, all.y = T),
+        psms_protein_tbl,
+        by = c("PSM", "Channel"), all.x = T, all.y = T
+    )
+
+    y_full = wide$log2IntensityNormalized
+    x_full = as.matrix(wide[, -(1:2), with = FALSE])
+    x_full = x_full[, !(colnames(x_full) == "log2IntensityNormalized")]
+    x_full = cbind(intercept = 1, x_full)
 
     cols = colnames(x_full)
-    psms_cols = stringr::str_replace(cols, "BRD[0-9]_HUMAN_", "") # TODO: general proteins
-    unique_psms = unique(psms_cols[-length(psms_cols)])
+    psms_cols = stringr::str_replace(cols, "_BRD[0-9]+_HUMAN", "") # TODO: general proteins
+    unique_psms = unique(psms_cols)
+    unique_psms = unique_psms[!grepl("int", unique_psms)]
     n_params = ncol(x_full)
     n_conditions = length(unique_psms)
 
@@ -54,23 +69,29 @@ getAllWeights = function(input, method, norm, norm_parameter) {
     }
 
     params_full = CVXR::Variable(n_params)
-    positive_matrix = diag(1, n_params - 1)
-    positive_matrix = rbind(positive_matrix, 0)
-    positive_matrix = cbind(positive_matrix, 0)
-    # constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-    #                         constraint_matrix_full %*% params_full == rep(1, n_conditions))
-    constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params))
+    n_intercepts = sum(grepl("int", cols))
+    positive_matrix = diag(1, n_params - n_intercepts)
+    positive_matrix = rbind(matrix(0, nrow = n_intercepts,
+                                   ncol = ncol(positive_matrix)),
+                            positive_matrix)
+    positive_matrix = cbind(matrix(0, ncol = n_intercepts,
+                                   nrow = nrow(positive_matrix)),
+                            positive_matrix)
+    constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
+                            constraint_matrix_full %*% params_full == c(rep(1, n_conditions),
+                                                                        rep(0, nrow(constraint_matrix_full) - n_conditions)))
+
     if (norm == "p_norm") {
-        obj = CVXR::p_norm(x_full %*% params_full - y_full, norm_parameter) + CVXR::p_norm(params_full, 1)
+        obj = CVXR::p_norm(x_full %*% params_full - y_full, norm_parameter)
     } else {
-        obj = CVXR::huber(x_full %*% params_full - y_full, norm_parameter) + CVXR::p_norm(params_full, 1)
+        obj = sum(CVXR::huber(x_full %*% params_full - y_full, norm_parameter))
     }
     prob_con = CVXR::Problem(CVXR::Minimize(obj), constraints_full)
     sol_con = CVXR::solve(prob_con)
     alphas = as.vector(sol_con$getValue(CVXR::variables(prob_con)[[1]]))
 
     result = data.table::data.table(
-        ProteinName = stringr::str_extract(cols, "BRD[0-9]_HUMAN"), # TODO: general protein
+        ProteinName = stringr::str_extract(cols, "BRD[0-9]+_HUMAN"), # TODO: general protein
         PSM = psms_cols,
         Weight = alphas
     )
@@ -128,7 +149,6 @@ getPPWeights = function(psm_data, intercept = FALSE, norm = "p_norm",
                               nrow = 1) %*% params == matrix(1, ncol = 1),
                        params >= rep(0, ncol(x_m)))
     prob = CVXR::Problem(objective, constraints)
-    # prob = CVXR::Problem(objective)
     prob
 }
 
@@ -141,9 +161,40 @@ getPPWeights = function(psm_data, intercept = FALSE, norm = "p_norm",
         weights = weights[1:num_proteins]
         status = "success"
     } else {
-        weights = rep(1 / num_proteins, num_proteins)
+        weights = rep(1 / num_proteins, num_proteins) # TODO: better solution
         status = "failure"
     }
     data.table::data.table(Weight = weights,
                            Optimization = status)
 }
+
+.getEqualProteinFeatureConstraint = function(input, cols, n_params) {
+    pp = unique(input[, .(ProteinName, PSM)])
+    pp[, Present := 1]
+    pp[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
+    pp = pp[!(IsUnique)]
+    pp[, ProteinGroups := paste(unique(ProteinName), sep = ";", collapse = ";"),
+       by = "PSM"]
+    pp2 = unique(pp[, .(ProteinGroups, ProteinName, PSM, Present = 1)])
+    pp3 = unique(pp2[order(ProteinGroups, PSM, ProteinName), .(ProteinGroups, PSM, ProteinName)])
+    groups = split(pp3, list(pp3$ProteinGroups, pp3$ProteinName))
+    groups = groups[sapply(groups, function(x) nrow(x) > 0)]
+
+    constraints_by_group = vector("list", length(groups))
+    for (i in seq_along(groups)) {
+        group = groups[[i]]
+        col_names_group = paste(group$ProteinName, group$PSM, sep = "_")
+        reference = col_names_group[1]
+        other_features = col_names_group[-1]
+        group_result = matrix(0, nrow = length(other_features), ncol = n_params)
+        for (j in seq_along(other_features)) {
+            group_result[j, cols == reference] = 1
+            group_result[j, cols == other_features[j]] = -1
+        }
+        constraints_by_group[[i]] = group_result
+    }
+    protein_constraint_matrix = do.call("rbind", constraints_by_group)
+    colnames(protein_constraint_matrix) = cols
+    protein_constraint_matrix
+}
+
