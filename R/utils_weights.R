@@ -7,17 +7,19 @@
 #' @param norm_parameter p for norm=="p_norm", M for norm=="Huber"
 #' @param equalize_protein_features if TRUE, all features in a protein group
 #' that belong to a given protein will share weight parameter
+#' @param weights_mode "contributions" for "sum to one" condition,
+#' "probabilities" for only "non-negative" condition.
 #'
 #' @return data.table
 #'
 #' @export
 #'
 getAllWeights = function(input, method, norm, norm_parameter,
-                         equalize_protein_features) {
+                         equalize_protein_features, weights_mode) {
     if (method == "all") {
         input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
         alphas_shared = .getWeightsCombined(input[!(IsUnique)], norm, norm_parameter,
-                                            equalize_protein_features)
+                                            equalize_protein_features, weights_mode)
         alphas_unique = unique(input[(IsUnique), .(ProteinName, PSM, Weight = 1)])
         alphas = rbind(alphas_shared, alphas_unique)
     } else {
@@ -33,7 +35,7 @@ getAllWeights = function(input, method, norm, norm_parameter,
 #' Get weights based on joint optimization (not per PSM)
 #' @keywords internal
 .getWeightsCombined = function(input, norm = "p_norm", norm_parameter = 1,
-                               equalize_protein_features = FALSE) {
+                               equalize_protein_features = FALSE, weights_mode = "contributions") {
     intensities_tbl = unique(input[, .(PSM, Channel, log2IntensityNormalized)])
     psms_intercept_tbl = unique(input[, .(PSM, Channel, ProteinName, Present = 1)])
     psms_intercept_tbl = dcast(psms_intercept_tbl,
@@ -77,9 +79,15 @@ getAllWeights = function(input, method, norm, norm_parameter,
     positive_matrix = cbind(matrix(0, ncol = n_intercepts,
                                    nrow = nrow(positive_matrix)),
                             positive_matrix)
-    constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-                            constraint_matrix_full %*% params_full == c(rep(1, n_conditions),
-                                                                        rep(0, nrow(constraint_matrix_full) - n_conditions)))
+
+    if (weights_mode == "contributions") {
+        constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
+                                constraint_matrix_full %*% params_full == c(rep(1, n_conditions),
+                                                                            rep(0, nrow(constraint_matrix_full) - n_conditions)))
+    } else {
+        constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
+                                positive_matrix %*% params_full <= rep(1, n_params))
+    }
 
     if (norm == "p_norm") {
         obj = CVXR::p_norm(x_full %*% params_full - y_full, norm_parameter)

@@ -5,7 +5,8 @@
 #' @param design_type "short" or "long" (not implemented yet)
 #' @param norm "p_norm" or "Huber"
 #' @param norm_parameter p for norm=="p_norm", M for norm=="Huber"
-#' @param use_weights if TRUE, PSM-Protein weights will be used
+#' @param weights_mode "contributions" for "sum to one" condition,
+#' "probabilities" for only "non-negative" condition.
 #' @param weights_method if "separate", weights will be estimated for each PSM
 #' separately, if "all", weights will be estimated jointly
 #' @param adaptive_huber if TRUE, M parameter for Huber norm will be updated
@@ -26,6 +27,7 @@
 getRobustSummary = function(input,
                             method_label= "",
                             norm = "p_norm", norm_parameter = 1,
+                            weights_mode = "contributions",
                             weights_method = "separate",
                             adaptive_huber = TRUE,
                             initial_summary_method = "msstats",
@@ -47,6 +49,7 @@ getRobustSummary = function(input,
     output_by_run = lapply(input_by_run, function(x) {
         getRobustSummarySingleRun(x, method_label,
                                   norm, norm_parameter,
+                                  weights_mode,
                                   weights_method, adaptive_huber,
                                   initial_summary_method, use_discordant,
                                   equalize_protein_features,
@@ -66,6 +69,7 @@ getRobustSummary = function(input,
 getRobustSummarySingleRun = function(input,
                                      method_label,
                                      norm = "p_norm", norm_parameter = 1,
+                                     weights_mode = "contributions",
                                      weights_method = "all",
                                      adaptive_huber = TRUE,
                                      initial_summary_method = "msstats",
@@ -93,7 +97,7 @@ getRobustSummarySingleRun = function(input,
     while (sum(abs(current_alphas - previous_alphas)) > tolerance) {
         previous_alphas = current_alphas
         alphas_df = getAllWeights(input_loop, weights_method, norm, norm_parameter,
-                                  equalize_protein_features)
+                                  equalize_protein_features, weights_mode)
         alphas_df_round = alphas_df[Weight > 0.01]
         alphas_df_round[, Weight := Weight / sum(Weight), by = "PSM"]
         alphas_list[[iter]] = alphas_df_round
