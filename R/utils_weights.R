@@ -24,7 +24,8 @@ getAllWeights = function(input, method, norm, norm_parameter,
         alphas = rbind(alphas_shared, alphas_unique)
     } else {
         split_df = split(input, input$PSM)
-        alphas = lapply(split_df, function(x) getPPWeights(x, TRUE, norm, norm_parameter))
+        alphas = lapply(split_df, function(x) getPPWeights(x, TRUE, norm, norm_parameter,
+                                                           weights_mode))
         alphas = rbindlist(alphas)
     }
     alphas$Weight = ifelse(alphas$Weight < 0, 0, alphas$Weight)
@@ -37,14 +38,14 @@ getAllWeights = function(input, method, norm, norm_parameter,
 .getWeightsCombined = function(input, norm = "p_norm", norm_parameter = 1,
                                equalize_protein_features = FALSE, weights_mode = "contributions") {
     intensities_tbl = unique(input[, .(PSM, Channel, log2IntensityNormalized)])
-    psms_intercept_tbl = unique(input[, .(PSM, Channel, ProteinName, Present = 1)])
+    psms_intercept_tbl = unique(input[, .(PSM, Channel, Present = 1)])
     psms_intercept_tbl = dcast(psms_intercept_tbl,
-                               PSM + Channel ~ PSM + ProteinName, value.var = "Present", fill = 0)
+                               PSM + Channel ~ PSM, value.var = "Present", fill = 0)
     colnames(psms_intercept_tbl)[3:ncol(psms_intercept_tbl)] = paste0("int_", 1:(ncol(psms_intercept_tbl) - 2))
     psms_protein_tbl = unique(input[, .(PSM, ProteinName, Channel, Abundance)])
     psms_protein_tbl = dcast(psms_protein_tbl,
                              PSM + Channel ~ PSM + ProteinName,
-                             value.var = "Abundance", fill = 0)
+                             value.var = "Abundance", fill = 0, sep = "___")
     wide = merge(
         merge(psms_intercept_tbl, intensities_tbl,
               by = c("PSM", "Channel"), all.x = T, all.y = T),
@@ -55,10 +56,12 @@ getAllWeights = function(input, method, norm, norm_parameter,
     y_full = wide$log2IntensityNormalized
     x_full = as.matrix(wide[, -(1:2), with = FALSE])
     x_full = x_full[, !(colnames(x_full) == "log2IntensityNormalized")]
-    x_full = cbind(intercept = 1, x_full)
+    # x_full = cbind(intercept = 1, x_full)
 
     cols = colnames(x_full)
-    psms_cols = stringr::str_replace(cols, "_BRD[0-9]+_HUMAN", "") # TODO: general proteins
+    cols_split = stringr::str_split(cols, "___")
+    psms_cols = sapply(cols_split, function(x) x[1])
+    protein_cols = sapply(cols_split, function(x) if (length(x) == 1) NA else x[-1])
     unique_psms = unique(psms_cols)
     unique_psms = unique_psms[!grepl("int", unique_psms)]
     n_params = ncol(x_full)
@@ -99,7 +102,7 @@ getAllWeights = function(input, method, norm, norm_parameter,
     alphas = as.vector(sol_con$getValue(CVXR::variables(prob_con)[[1]]))
 
     result = data.table::data.table(
-        ProteinName = stringr::str_extract(cols, "BRD[0-9]+_HUMAN"), # TODO: general protein
+        ProteinName = protein_cols, # TODO: general protein
         PSM = psms_cols,
         Weight = alphas
     )
@@ -110,7 +113,7 @@ getAllWeights = function(input, method, norm, norm_parameter,
 #' Get weights for a single PSM
 #' @keywords internal
 getPPWeights = function(psm_data, intercept = FALSE, norm = "p_norm",
-                        norm_parameter = 1) {
+                        norm_parameter = 1, weights_mode = "contributions") {
     wide = data.table::dcast(psm_data, log2IntensityNormalized + Channel ~ ProteinName,
                              value.var = "Abundance", fill = 0)
     num_proteins = ncol(wide) - 2
@@ -122,7 +125,8 @@ getPPWeights = function(psm_data, intercept = FALSE, norm = "p_norm",
                                       Optimization = "none"))
     } else {
         optimization_problem = .getWeightsOptimProblem(wide, intercept,
-                                                       norm, norm_parameter)
+                                                       norm, norm_parameter,
+                                                       weights_mode)
         solution = CVXR::solve(optimization_problem)
         result = .processOptimSolution(solution, optimization_problem,
                                        num_proteins)
@@ -136,7 +140,7 @@ getPPWeights = function(psm_data, intercept = FALSE, norm = "p_norm",
 #' Get optimization problem for weights estimation
 #' @keywords internal
 .getWeightsOptimProblem = function(wide, intercept = FALSE, norm = "p_norm",
-                                   norm_parameter = 1) {
+                                   norm_parameter = 1, weights_mode = "contributions") {
     num_params = ncol(wide) - 2
     x_m = as.matrix(wide[, 3:ncol(wide), with = FALSE])
     x_m = apply(x_m, 2, function(x) x - mean(x))
@@ -152,10 +156,15 @@ getPPWeights = function(psm_data, intercept = FALSE, norm = "p_norm",
     } else if (norm == "Huber") {
         objective = CVXR::Minimize(sum(CVXR::huber(x_m %*% params - y, M = norm_parameter)))# + CVXR::p_norm(params, 1))
     }
-    constraints = list(matrix(c(rep(1, num_params),
-                                rep(0, as.integer(intercept))),
-                              nrow = 1) %*% params == matrix(1, ncol = 1),
-                       params >= rep(0, ncol(x_m)))
+    if (weights_mode == "contributions") {
+        constraints = list(matrix(c(rep(1, num_params),
+                                    rep(0, as.integer(intercept))),
+                                  nrow = 1) %*% params == matrix(1, ncol = 1),
+                           params >= rep(0, ncol(x_m)))
+    } else {
+        constraints = list(params >= rep(0, ncol(x_m)),
+                           params <= rep(1, ncol(x_m)))
+    }
     prob = CVXR::Problem(objective, constraints)
     prob
 }
