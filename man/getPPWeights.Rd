@@ -4,7 +4,13 @@
 \alias{getPPWeights}
 \title{Get weights for a single PSM}
 \usage{
-getPPWeights(psm_data, intercept = TRUE, norm = "p_norm", norm_parameter = 1)
+getPPWeights(
+  psm_data,
+  intercept = FALSE,
+  norm = "p_norm",
+  norm_parameter = 1,
+  weights_mode = "contributions"
+)
 }
 \description{
 Get weights for a single PSM

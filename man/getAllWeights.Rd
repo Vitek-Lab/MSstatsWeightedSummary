@@ -4,7 +4,14 @@
 \alias{getAllWeights}
 \title{Get PSM-protein weights for summarization with shared peptides}
 \usage{
-getAllWeights(input, method, norm, norm_parameter)
+getAllWeights(
+  input,
+  method,
+  norm,
+  norm_parameter,
+  equalize_protein_features,
+  weights_mode
+)
 }
 \arguments{
 \item{input}{data.table}
@@ -15,6 +22,12 @@ weights for each PSM separately}
 \item{norm}{"p_norm" or "huber"}
 
 \item{norm_parameter}{p for norm=="p_norm", M for norm=="Huber"}
+
+\item{equalize_protein_features}{if TRUE, all features in a protein group
+that belong to a given protein will share weight parameter}
+
+\item{weights_mode}{"contributions" for "sum to one" condition,
+"probabilities" for only "non-negative" condition.}
 }
 \value{
 data.table

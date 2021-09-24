@@ -2,6 +2,7 @@
 #' @param input data.table
 #'
 #' @return data.table
+#' @export
 #'
 normalizeSharedPeptides = function(input) {
     Intensity = log2Intensity = NULL
@@ -42,7 +43,7 @@ normalizeSharedPeptides = function(input) {
         unique(input[, list(Run, Channel, MedianLog2Int)])[, MedianLog2Int],
         na.rm = TRUE
     )
-    input[, Diff := median_baselineine - MedianLog2Int]
+    input[, Diff := median_baseline - MedianLog2Int]
     input[, log2IntensityNormalized := log2Intensity + Diff]
     # input[, log2Intensity := log2IntensityNormalized]
     input[, Intensity := 2 ^ log2IntensityNormalized]

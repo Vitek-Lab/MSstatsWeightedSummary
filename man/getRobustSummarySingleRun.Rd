@@ -7,15 +7,14 @@
 getRobustSummarySingleRun(
   input,
   method_label,
-  design_type = "short",
   norm = "p_norm",
   norm_parameter = 1,
-  use_weights = TRUE,
+  weights_mode = "contributions",
   weights_method = "all",
   adaptive_huber = TRUE,
   initial_summary_method = "msstats",
   use_discordant = TRUE,
-  use_shared_initial = FALSE,
+  equalize_protein_features = FALSE,
   tolerance = 0.001,
   max_iter = 10
 )

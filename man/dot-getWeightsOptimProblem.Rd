@@ -6,9 +6,10 @@
 \usage{
 .getWeightsOptimProblem(
   wide,
-  intercept = TRUE,
+  intercept = FALSE,
   norm = "p_norm",
-  norm_parameter = 1
+  norm_parameter = 1,
+  weights_mode = "contributions"
 )
 }
 \description{

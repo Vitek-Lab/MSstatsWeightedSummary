@@ -4,7 +4,13 @@
 \alias{.getWeightsCombined}
 \title{Get weights based on joint optimization (not per PSM)}
 \usage{
-.getWeightsCombined(input, norm = "p_norm", norm_parameter = 1)
+.getWeightsCombined(
+  input,
+  norm = "p_norm",
+  norm_parameter = 1,
+  equalize_protein_features = FALSE,
+  weights_mode = "contributions"
+)
 }
 \description{
 Get weights based on joint optimization (not per PSM)
