@@ -73,6 +73,7 @@ getRobustSummarySingleRun = function(input,
                                      weights_method = "all",
                                      adaptive_huber = TRUE,
                                      initial_summary_method = "msstats",
+                                     use_shared_initial = FALSE,
                                      use_discordant = TRUE,
                                      equalize_protein_features = FALSE,
                                      tolerance = 1e-3,
@@ -102,12 +103,9 @@ getRobustSummarySingleRun = function(input,
         alphas_df_round[, Weight := Weight / sum(Weight), by = "PSM"]
         alphas_list[[iter]] = alphas_df_round
 
-        input_abundances = merge(input_loop[, list(ProteinName, PSM, Channel,
-                                                   log2IntensityNormalized)],
-                                 alphas_df_round, by = c("ProteinName", "PSM"))
-        new_abundances = getOptimSummary(input_abundances, "short", TRUE,
-                                         norm, norm_parameter, TRUE,
-                                         adaptive_huber)
+        new_abundances = getWeightedSummary(input_loop, alphas_df_round,
+                                            TRUE, norm, norm_parameter, TRUE,
+                                            adaptive_huber)
         if (norm == "Huber" & adaptive_huber) {
             norm_parameter = attr(new_abundances, "M")
         }

@@ -17,8 +17,9 @@ getInitialSummary = function(input, method, use_discordant, use_shared, norm, no
     if (method == "msstats") {
         result = getMSstatsSummary(input, use_shared, use_discordant)
     } else {
-        result = getOptimSummary(input, "short", use_discordant, norm,
-                                 norm_parameter, use_shared, FALSE)
+        weights_df = unique(input[, list(ProteinName, PSM, Weight)])
+        result = getWeightedSummary(input, weights_df, use_discordant, norm,
+                                    norm_parameter, use_shared, FALSE)
     }
     result = as.data.table(result)
     setnames(result, "Protein", "ProteinName", skip_absent = TRUE)
@@ -31,7 +32,7 @@ getInitialSummary = function(input, method, use_discordant, use_shared, norm, no
 getMSstatsSummary = function(input, use_shared, use_discordant) {
     input$Intensity = 2 ^ input$log2IntensityNormalized
     if (!use_discordant) {
-        if (is.element(colnames(input), "IsDiscordant")) {
+        if (is.element("IsDiscordant", colnames(input))) {
             input = input[!(IsDiscordant)]
         }
     }
@@ -52,11 +53,17 @@ getMSstatsSummary = function(input, use_shared, use_discordant) {
 
 
 #' Optimize a give criterion to estimate protein abundances
-#' @keywords internal
-getOptimSummary = function(input, design_type, use_discordant,
-                           norm, norm_parameter, use_shared, adaptive_huber) {
+#' @inheritParams getRobustSummary
+#' @param weights_df data.table with weights.
+#' @param use_shared if TRUE, shared peptides will be used.
+#' @export
+getWeightedSummary = function(input, weights_df, use_discordant,
+                              norm, norm_parameter, use_shared, adaptive_huber) {
+    input = merge(input[, list(ProteinName, PSM, Channel,
+                               log2IntensityNormalized)],
+                  weights_df, by = c("ProteinName", "PSM"))
     if (!use_discordant) {
-        if (is.element(colnames(input), "IsDiscordant")) {
+        if (is.element("IsDiscordant", colnames(input))) {
             input = input[!(IsDiscordant)]
         }
     }
@@ -65,7 +72,7 @@ getOptimSummary = function(input, design_type, use_discordant,
         input = input[(IsUnique)]
         input = unique(input)
     }
-    design = .getDesign(input, design_type)
+    design = .getDesign(input, "short")
     design_matrix = design[["matrix"]]
     y = design[["response"]]
     optimization_problem = .getProteinsOptimProblem(design_matrix, y,
@@ -81,7 +88,7 @@ getOptimSummary = function(input, design_type, use_discordant,
     }
 
     estimated_abundances = .processProteinSolution(solution, optimization_problem,
-                                                   input)
+                                                   input, design_matrix)
     if (norm == "Huber" & adaptive_huber) {
         attr(estimated_abundances, "M") = M
     }
@@ -92,17 +99,13 @@ getOptimSummary = function(input, design_type, use_discordant,
 #' @keywords internal
 .getDesign = function(input, design_matrix) {
     cols = c("PSM", "Channel", "log2IntensityNormalized")
-    if (design_matrix == "short") {
-        dm = data.table::dcast(input, log2IntensityNormalized + PSM + Channel ~ ProteinName + Channel,
-                   value.var = "Weight", fill = 0)
-        dm$Present = 1
-        dm = data.table::dcast(dm, ... ~ PSM, value.var = "Present", fill = 0)
-        dm$intercept = 1
-        y = dm$log2IntensityNormalized
-        dm = as.matrix(dm[, !(colnames(dm) %in% cols), with = FALSE])
-    } else {
-        stop("Not implemented yet")
-    }
+    dm = data.table::dcast(input, log2IntensityNormalized + PSM + Channel ~ ProteinName + Channel,
+                           value.var = "Weight", fill = 0, sep = "__")
+    dm$Present = 1
+    dm = data.table::dcast(dm, ... ~ PSM, value.var = "Present", fill = 0)
+    dm$intercept = 1
+    y = dm$log2IntensityNormalized
+    dm = as.matrix(dm[, !(colnames(dm) %in% cols), with = FALSE])
     list(matrix = dm,
          response = y)
 }
@@ -125,13 +128,21 @@ getOptimSummary = function(input, design_type, use_discordant,
 #' Get protein abundances from optimization result
 #' @keywords internal
 .processProteinSolution = function(solution, optimization_problem,
-                                   input) {
+                                   input, design_matrix) {
     num_channels = uniqueN(input$Channel)
     num_proteins = uniqueN(input$ProteinName)
     protein_values = solution$getValue(CVXR::variables(optimization_problem)[[1]])
     baseline = protein_values[length(protein_values)]
-    protein_values = baseline + protein_values[1:(num_channels * num_proteins)]
-    data.table(ProteinName = rep(unique(input$ProteinName), each = num_channels),
-               Channel = rep(unique(input$Channel), times = num_proteins),
-               Abundance = protein_values)
+
+    param_names = colnames(design_matrix)
+    result = data.table(label = param_names,
+                        value = protein_values[, 1])
+    protein_channel_names = stringr::str_split(result$label, "__")
+    is_prot_channel = sapply(protein_channel_names, function(x) length(x) == 2)
+    result = result[is_prot_channel]
+    protein_channel_names = protein_channel_names[is_prot_channel]
+    result[, ProteinName := sapply(protein_channel_names, function(x) x[1])]
+    result[, Channel := sapply(protein_channel_names, function(x) x[2])]
+    result[, Abundance := value + baseline]
+    result[, list(ProteinName, Channel, Abundance)]
 }
