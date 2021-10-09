@@ -51,7 +51,9 @@ getRobustSummary = function(input,
                                   norm, norm_parameter,
                                   weights_mode,
                                   weights_method, adaptive_huber,
-                                  initial_summary_method, use_discordant,
+                                  initial_summary_method,
+                                  TRUE,
+                                  use_discordant,
                                   equalize_protein_features,
                                   tolerance, max_iter)
     })

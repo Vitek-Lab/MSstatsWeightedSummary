@@ -18,10 +18,11 @@ getAllWeights = function(input, method, norm, norm_parameter,
                          equalize_protein_features, weights_mode) {
     if (method == "all") {
         input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
-        alphas_shared = .getWeightsCombined(input[!(IsUnique)], norm, norm_parameter,
+        alphas_shared = .getWeightsCombined(input, norm, norm_parameter,
                                             equalize_protein_features, weights_mode)
-        alphas_unique = unique(input[(IsUnique), .(ProteinName, PSM, Weight = 1)])
-        alphas = rbind(alphas_shared, alphas_unique)
+        # alphas_unique = unique(input[(IsUnique), .(ProteinName, PSM, Weight = 1)])
+        # alphas = rbind(alphas_shared, alphas_unique)
+        alphas  = alphas_shared
     } else {
         split_df = split(input, input$PSM)
         alphas = lapply(split_df, function(x) getPPWeights(x, TRUE, norm, norm_parameter,
