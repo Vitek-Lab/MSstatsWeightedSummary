@@ -69,8 +69,11 @@ getWeightedSummary = function(input, weights_df, use_discordant,
     }
     if (!use_shared) {
         input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
-        input = input[(IsUnique)]
+        input[, HasUnique := any(IsUnique), by = "ProteinName"]
+        input = input[(IsUnique) | !(HasUnique)]
         input = unique(input)
+        # input = input[(IsUnique)]
+        # input = unique(input)
     }
     design = .getDesign(input, "short")
     design_matrix = design[["matrix"]]
@@ -116,12 +119,21 @@ getWeightedSummary = function(input, weights_df, use_discordant,
                                     norm_parameter = 1) {
     num_params = ncol(design_matrix)
     params = CVXR::Variable(num_params)
+
+    conditions_matrix = matrix(1, ncol = num_params, nrow = 1)
+    conditions_matrix[grepl("__", colnames(design_matrix)) | colnames(design_matrix) == "intercept"] = 0
+
+    # conditions_matrix2 = matrix(1, ncol = num_params, nrow = 1)
+    # conditions_matrix2[!grepl("__", colnames(design_matrix))] = 0
+    #
+    # conditions_matrix = rbind(conditions_matrix, conditions_matrix2)
+
     if (norm == "p_norm") {
         objective = CVXR::Minimize(CVXR::p_norm(design_matrix %*% params - y, p = norm_parameter))
     } else if (norm == "Huber") {
         objective = CVXR::Minimize(sum(CVXR::huber(design_matrix %*% params - y, M = norm_parameter)))
     }
-    prob = CVXR::Problem(objective)
+    prob = CVXR::Problem(objective, list(conditions_matrix %*% params == 0))
     prob
 }
 

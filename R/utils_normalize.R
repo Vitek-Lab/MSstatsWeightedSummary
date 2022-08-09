@@ -14,6 +14,10 @@ normalizeSharedPeptides = function(input) {
                                        Run, Channel, Intensity)])
     to_normalize[, log2Intensity := log(Intensity, 2)]
 
+    if (any(!is.na(to_normalize$Intensity) & to_normalize$Intensity < 1)) {
+        to_normalize[, log2Intensity := ifelse(!is.na(Intensity) & Intensity < 1,
+                                        NA, log2Intensity)]
+    }
     to_normalize = .normalizePeptides(to_normalize)
     if (any(to_normalize$Intensity < 1 & !is.na(to_normalize$Intensity))) {
         to_normalize[, log2Intensity := ifelse(Intensity < 1 & !is.na(Intensity),

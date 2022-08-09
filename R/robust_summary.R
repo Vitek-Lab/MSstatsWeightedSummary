@@ -29,14 +29,15 @@ getRobustSummary = function(input,
                             norm = "p_norm", norm_parameter = 1,
                             weights_mode = "contributions",
                             weights_method = "separate",
-                            adaptive_huber = TRUE,
+                            adaptive_huber = FALSE,
                             initial_summary_method = "msstats",
                             use_discordant = TRUE,
                             equalize_protein_features = FALSE,
+                            use_control = TRUE, control_pattern = NULL,
                             tolerance = 1e-3,
                             max_iter = 10) {
     if (!is.element("Weight", colnames(input))) {
-        input[, Weight := 1 / uniqueN(ProteinName), by = "PSM"]
+        input[, Weight := 1, by = "PSM"]
     }
     if (any(!is.finite(input$log2IntensityNormalized) | is.na(input$log2IntensityNormalized))) {
         input[,
@@ -52,9 +53,10 @@ getRobustSummary = function(input,
                                   weights_mode,
                                   weights_method, adaptive_huber,
                                   initial_summary_method,
-                                  TRUE,
+                                  FALSE,
                                   use_discordant,
                                   equalize_protein_features,
+                                  use_control, control_pattern,
                                   tolerance, max_iter)
     })
     summarized_output = rbindlist(lapply(output_by_run, function(x) x$summary))
@@ -78,13 +80,14 @@ getRobustSummarySingleRun = function(input,
                                      use_shared_initial = FALSE,
                                      use_discordant = TRUE,
                                      equalize_protein_features = FALSE,
+                                     use_control = TRUE, control_pattern = NULL,
                                      tolerance = 1e-3,
                                      max_iter = 10) {
     annotation = unique(input[, list(Run, Mixture, TechRepMixture,
                                      Channel, Condition, BioReplicate)])
     alphas_list = vector("list", max_iter)
-    input_loop = copy(input)
-    input_loop = unique(input_loop[, .(ProteinName, PSM, Channel, log2IntensityNormalized, Weight)])
+    input_loop = data.table::copy(input)
+    input_loop = unique(input_loop[, .(ProteinName, PSM, Channel, Condition, log2IntensityNormalized, Weight)])
     ppsm = unique(input[, .(ProteinName, PSM)])
     num_alpha_params = uniqueN(ppsm)
     current_alphas = rep(1, num_alpha_params)
@@ -100,7 +103,8 @@ getRobustSummarySingleRun = function(input,
     while (sum(abs(current_alphas - previous_alphas)) > tolerance) {
         previous_alphas = current_alphas
         alphas_df = getAllWeights(input_loop, weights_method, norm, norm_parameter,
-                                  equalize_protein_features, weights_mode)
+                                  equalize_protein_features, weights_mode,
+                                  use_control, control_pattern)
         alphas_df_round = alphas_df[Weight > 0.01]
         alphas_df_round[, Weight := Weight / sum(Weight), by = "PSM"]
         alphas_list[[iter]] = alphas_df_round
@@ -111,7 +115,7 @@ getRobustSummarySingleRun = function(input,
         if (norm == "Huber" & adaptive_huber) {
             norm_parameter = attr(new_abundances, "M")
         }
-        input_loop = merge(input_loop[, list(ProteinName, PSM, Channel,
+        input_loop = merge(input_loop[, list(ProteinName, PSM, Channel, Condition,
                                              log2IntensityNormalized)],
                            new_abundances, by = c("ProteinName", "Channel"))
         alphas_df = merge(alphas_df, ppsm, all.x = TRUE, all.y = TRUE,
@@ -127,7 +131,7 @@ getRobustSummarySingleRun = function(input,
         }
     }
     summarized_output = merge(input_loop, annotation,
-                              by = "Channel")
+                              by = c("Channel", "Condition"))
     summarized_output = summarized_output[, !(colnames(summarized_output) %in% c("PSM", "log2IntensityNormalized")), with = FALSE]
     summarized_output = unique(summarized_output)
     summarized_output$Method = method_label

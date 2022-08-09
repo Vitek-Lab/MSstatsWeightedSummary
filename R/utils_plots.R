@@ -22,8 +22,8 @@ plotSummaryComparison = function(..., channel_order = NULL, feature_data = NULL)
                                     color = Method))
     if (!is.null(feature_data)) {
         plot = plot +
-            geom_boxplot(aes(x = Channel, y = log2IntensityNormalized),
-                         data = feature_data, inherit.aes = FALSE) +
+            # geom_boxplot(aes(x = Channel, y = log2IntensityNormalized),
+            #              data = feature_data, inherit.aes = FALSE) +
             geom_line(aes(x = Channel, y = log2IntensityNormalized,
                           group = PSM, linetype = IsUnique),
                       data = feature_data, inherit.aes = FALSE,
@@ -34,7 +34,8 @@ plotSummaryComparison = function(..., channel_order = NULL, feature_data = NULL)
         geom_line(size = 1.2) +
         facet_wrap(Run~ProteinName) +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 270))
+        theme(axis.text.x = element_text(angle = 270),
+              legend.position = "bottom")
     plot
 }
 
