@@ -2,12 +2,11 @@
 % Please edit documentation in R/utils_summary.R
 \name{getWeightedSummary}
 \alias{getWeightedSummary}
-\title{Optimize a give criterion to estimate protein abundances}
+\title{Optimize a given criterion to estimate protein abundances}
 \usage{
 getWeightedSummary(
   input,
   weights_df,
-  use_discordant,
   norm,
   norm_parameter,
   use_shared,
@@ -19,8 +18,6 @@ getWeightedSummary(
 
 \item{weights_df}{data.table with weights.}
 
-\item{use_discordant}{if TRUE, discordant profiles will be used}
-
 \item{norm}{"p_norm" or "Huber"}
 
 \item{norm_parameter}{p for norm=="p_norm", M for norm=="Huber"}
@@ -31,5 +28,5 @@ getWeightedSummary(
 in each iteration of the procedure}
 }
 \description{
-Optimize a give criterion to estimate protein abundances
+Optimize a given criterion to estimate protein abundances
 }

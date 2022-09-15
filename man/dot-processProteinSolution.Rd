@@ -4,7 +4,7 @@
 \alias{.processProteinSolution}
 \title{Get protein abundances from optimization result}
 \usage{
-.processProteinSolution(solution, optimization_problem, input)
+.processProteinSolution(solution, optimization_problem, input, design_matrix)
 }
 \description{
 Get protein abundances from optimization result

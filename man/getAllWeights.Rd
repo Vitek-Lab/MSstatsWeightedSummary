@@ -6,24 +6,19 @@
 \usage{
 getAllWeights(
   input,
-  method,
   norm,
   norm_parameter,
-  equalize_protein_features,
-  weights_mode
+  weights_mode,
+  use_control,
+  control_pattern
 )
 }
 \arguments{
 \item{input}{data.table}
 
-\item{method}{"all" for jointly estimating weights, "separate" for estimating
-weights for each PSM separately}
-
 \item{norm}{"p_norm" or "huber"}
 
-\item{norm_parameter}{p for norm=="p_norm", M for norm=="Huber"}
-
-\item{equalize_protein_features}{if TRUE, all features in a protein group
+\item{norm_parameter}{p for norm=="p_norm", M for norm=="Huber"
 that belong to a given protein will share weight parameter}
 
 \item{weights_mode}{"contributions" for "sum to one" condition,

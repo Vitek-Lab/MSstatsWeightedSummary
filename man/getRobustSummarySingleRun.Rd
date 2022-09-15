@@ -10,11 +10,9 @@ getRobustSummarySingleRun(
   norm = "p_norm",
   norm_parameter = 1,
   weights_mode = "contributions",
-  weights_method = "all",
-  adaptive_huber = TRUE,
-  initial_summary_method = "msstats",
-  use_discordant = TRUE,
-  equalize_protein_features = FALSE,
+  adaptive_huber = FALSE,
+  use_control = TRUE,
+  control_pattern = NULL,
   tolerance = 0.001,
   max_iter = 10
 )

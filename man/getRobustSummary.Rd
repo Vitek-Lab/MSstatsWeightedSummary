@@ -10,11 +10,9 @@ getRobustSummary(
   norm = "p_norm",
   norm_parameter = 1,
   weights_mode = "contributions",
-  weights_method = "separate",
-  adaptive_huber = TRUE,
-  initial_summary_method = "msstats",
-  use_discordant = TRUE,
-  equalize_protein_features = FALSE,
+  adaptive_huber = FALSE,
+  use_control = TRUE,
+  control_pattern = NULL,
   tolerance = 0.001,
   max_iter = 10
 )
@@ -31,25 +29,12 @@ getRobustSummary(
 \item{weights_mode}{"contributions" for "sum to one" condition,
 "probabilities" for only "non-negative" condition.}
 
-\item{weights_method}{if "separate", weights will be estimated for each PSM
-separately, if "all", weights will be estimated jointly}
-
 \item{adaptive_huber}{if TRUE, M parameter for Huber norm will be updated
 in each iteration of the procedure}
-
-\item{initial_summary_method}{summarization method to start iterative procedure
-- "msstats" or "same"}
-
-\item{use_discordant}{if TRUE, discordant profiles will be used}
 
 \item{tolerance}{tolerance to indicate weights convergence}
 
 \item{max_iter}{maximum number of iteration of the procedure}
-
-\item{design_type}{"short" or "long" (not implemented yet)}
-
-\item{use_shared_initial}{if TRUE, shared peptides will be used in summary
-that initializes iterative procedure}
 }
 \value{
 list of final summary, history of weights and difference between weights
