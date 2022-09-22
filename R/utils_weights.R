@@ -10,37 +10,19 @@
 #' @return data.table
 #'
 #' @export
-#'
-getAllWeights = function(input, norm, norm_parameter, weights_mode,
-                         use_control, control_pattern) {
+getAllWeights = function(input, norm = "p_norm", norm_parameter = 1,
+                               weights_mode = "contributions", use_control = TRUE,
+                               control_pattern = NULL) {
     input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
-    # input_stand = data.table::copy(input)
-    # input_stand[, log2IntensityNormalize := log2IntensityNormalized - mean(log2IntensityNormalized),
-    #             by = c("ProteinName", "PSM")]
-    alphas_shared = .getWeightsCombined(input, norm, norm_parameter,
-                                        weights_mode, use_control,
-                                        control_pattern)
-    # alphas_unique = unique(input[(IsUnique), .(ProteinName, PSM, Weight = 1)])
-    # alphas = rbind(alphas_shared, alphas_unique)
-    alphas  = alphas_shared
-    alphas$Weight = ifelse(alphas$Weight < 0, 0, alphas$Weight)
-    alphas
-}
 
-
-#' Get weights based on joint optimization (not per PSM)
-#' @keywords internal
-.getWeightsCombined = function(input, norm = "p_norm", norm_parameter = 1,
-                               weights_mode = "contributions", use_control,
-                               control_pattern) {
-    # if (!use_control) {
-    #     input = input[!grepl(control_pattern, Condition)]
-    # }
+    if (!use_control) {
+        input = input[!grepl(control_pattern, Condition)]
+    }
 
     intensities_tbl = unique(input[, .(PSM, Channel, log2IntensityNormalized)])
     psms_intercept_tbl = unique(input[, .(PSM, Channel, Present = 1)])
-    psms_intercept_tbl = dcast(psms_intercept_tbl,
-                               PSM + Channel ~ PSM, value.var = "Present", fill = 0)
+    psms_intercept_tbl = data.table::dcast(psms_intercept_tbl,
+                                           PSM + Channel ~ PSM, value.var = "Present", fill = 0)
     colnames(psms_intercept_tbl)[3:ncol(psms_intercept_tbl)] = paste0("int_", 1:(ncol(psms_intercept_tbl) - 2))
     psms_protein_tbl = unique(input[, .(PSM, ProteinName, Channel, Abundance)])
     psms_protein_tbl = dcast(psms_protein_tbl,
@@ -52,6 +34,7 @@ getAllWeights = function(input, norm, norm_parameter, weights_mode,
         psms_protein_tbl,
         by = c("PSM", "Channel"), all.x = T, all.y = T
     )
+    wide = data.table::as.data.table(wide)
 
     y_full = wide$log2IntensityNormalized
     x_full = as.matrix(wide[, -(1:2), with = FALSE])
@@ -107,7 +90,7 @@ getAllWeights = function(input, norm, norm_parameter, weights_mode,
     alphas = as.vector(sol_con$getValue(CVXR::variables(prob_con)[[1]]))
 
     result = data.table::data.table(
-        ProteinName = protein_cols, # TODO: general protein
+        ProteinName = protein_cols,
         PSM = psms_cols,
         Weight = alphas
     )

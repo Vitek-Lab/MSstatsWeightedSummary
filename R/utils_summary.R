@@ -5,7 +5,7 @@
 #' @export
 getWeightedSummary = function(input, weights_df,
                               norm, norm_parameter,
-                              use_shared, adaptive_huber) {
+                              use_shared) {
     input = merge(input[, list(ProteinName, PSM, Channel,
                                log2IntensityNormalized)],
                   weights_df, by = c("ProteinName", "PSM"))
@@ -14,15 +14,9 @@ getWeightedSummary = function(input, weights_df,
 
     if (!use_shared) {
         input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
-        has_unique = input[, .(HasUnique = any(IsUnique)),
-                           by = "ProteinName"]
-        if (all(has_unique[["HasUnique"]])) {
-            input = input[(IsUnique)]
-        } else {
-            input[, HasUnique := any(IsUnique), by = "ProteinName"]
-            input = input[(IsUnique) | !(HasUnique)]
-            input[, HasUnique := NULL]
-        }
+        input[, HasUnique := any(IsUnique), by = "ProteinName"]
+        input = input[(IsUnique) | !(HasUnique)]
+        input = unique(input)
     }
     design = .getDesign(input)
     design_matrix = design[["matrix"]]
@@ -32,21 +26,8 @@ getWeightedSummary = function(input, weights_df,
                                                     proteins, psms)
     solution = CVXR::solve(optimization_problem)
 
-    if (norm == "Huber" & adaptive_huber) {
-        M = norm_parameter
-        prot_values = solution$getValue(CVXR::variables(optimization_problem)[[1]])
-        raw_resid = design_matrix %*% prot_values - y
-        huber_resid = ifelse(abs(raw_resid) < M, 0.5 * raw_resid ^ 2, M * (abs(raw_resid) - 0.5 * M))
-        M = median(huber_resid)
-    }
-
     estimated_abundances = .processProteinSolution(solution, optimization_problem,
                                                    input, design_matrix)
-    if (norm == "Huber" & adaptive_huber) {
-        attr(estimated_abundances, "M") = M
-    }
-    # estimated_abundances = merge(estimated_abundances,
-    #                              annotation, by = "Channel")
     estimated_abundances
 }
 
