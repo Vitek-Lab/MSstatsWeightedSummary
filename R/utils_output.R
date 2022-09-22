@@ -1,3 +1,8 @@
+#' Prepare summarizaton output
+#' @inheritParams getWeightedProteinSummary
+#' @param summary_per_cluster output of getClusterSummaries
+#' @param annotation output of getAnnotation
+#' @keywords internal
 processSummarizationOutput = function(summary_per_cluster,
                                       feature_data,
                                       annotation,
@@ -25,6 +30,9 @@ processSummarizationOutput = function(summary_per_cluster,
          ConvergenceHistory = convergence_history)
 }
 
+#' Get summary of final weights
+#' @inheritParams processSummarizationOutput
+#' @keywords internal
 getWeightsSummary = function(summary_per_cluster) {
     data.table::rbindlist(
         lapply(summary_per_cluster,
@@ -44,6 +52,10 @@ getWeightsSummary = function(summary_per_cluster) {
                        }))
                }))
 }
+
+#' Get history of weights from all iterations
+#' @inheritParams processSummarizationOutput
+#' @keywords internal
 getWeightsHistory = function(summary_per_cluster, save_weights_history) {
     if (save_weights_history) {
         data.table::rbindlist(
@@ -77,6 +89,9 @@ getWeightsHistory = function(summary_per_cluster, save_weights_history) {
     }
 }
 
+#' Get convergence summary
+#' @inheritParams processSummarizationOutput
+#' @keywords internal
 getConvergenceSummary = function(summary_per_cluster, tolerance) {
     data.table::rbindlist(
         lapply(
@@ -101,6 +116,9 @@ getConvergenceSummary = function(summary_per_cluster, tolerance) {
     )
 }
 
+#' Get details of convergence
+#' @inheritParams processSummarizationOutput
+#' @keywords internal
 getConvergenceHistory = function(summary_per_cluster,
                                  tolerance,
                                  save_convergence_history) {

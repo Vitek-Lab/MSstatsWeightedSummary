@@ -1,3 +1,5 @@
+#' Check if data is in MSstatsTMT format
+#' @keywords internal
 checkDataCorrectness = function(feature_data) {
     required_columns = c("ProteinName", "PeptideSequence", "Charge",
                          "PSM", "Channel", "Intensity", "Run",
@@ -28,6 +30,7 @@ checkDataCorrectness = function(feature_data) {
 
 
 #' Split data into a list of clusters
+#' @inheritParams getWeightedProteinSummary
 #' @keywords internal
 getProteinsClusters = function(feature_data) {
     feature_data = feature_data[, .(Cluster, Run, ProteinName, PSM, Channel,
@@ -35,6 +38,8 @@ getProteinsClusters = function(feature_data) {
     split(feature_data, feature_data[["Cluster"]])
 }
 
+#' Make annotation
+#' @keywords internal
 getAnnotation = function(feature_data) {
     unique(feature_data[, list(Run, Mixture, TechRepMixture,
                                Channel, Condition, BioReplicate)])

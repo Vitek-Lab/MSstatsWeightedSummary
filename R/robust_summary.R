@@ -1,23 +1,52 @@
-#' Get robust summary with shared peptides
+#' Get robust protein-level summary based on unique and shared peptides
 #'
-#' @param feature_data data.table in MSstatsTMT format
-#' @param method_label name for a summarization method
+#' @param feature_data data.table in MSstatsTMT format. See also the Details section
 #' @param norm "p_norm" or "Huber"
 #' @param norm_parameter p for norm=="p_norm", M for norm=="Huber"
-#' @param weights_mode "contributions" for "sum to one" condition,
+#' @param weights_mode "contributions" for "sum to one" and "non-negative" conditions,
 #' "probabilities" for only "non-negative" condition.
 #' @param tolerance tolerance to indicate weights convergence
 #' @param max_iter maximum number of iteration of the procedure
+#' @param save_weights_history logical, if TRUE, weights from all iterations will
+#' be returned
+#' @param save_convergence_history logical, if TRUE, all differences between consecutive
+#' weights estimator from all iterations will be returned
 #'
-#' @return list of final summary, history of weights and difference between weights
-#' from consecutive iterations
+#' @return list of data frames with summary and other information. See the Details section for more information
+#'
+#' @details
+#' 1. Input format: this function takes as input data in MSstatsTMT format,
+#' which is a data frame with columns ProteinName, PeptideSequence, Charge,
+#' PSM (equal to PeptideSequence and Charge separated by an underscore),
+#' Channel, Intensity, Run and annotation columns: BioReplicate, Condition,
+#' Mixture, and TechRepMixture. Additionally, we use two columns:
+#' log2IntensityNormalized and Cluster. The first column stores log-transformed
+#' normalized intensities (which can be obtained with \code{\link{normalizeSharedPeptides}} function).
+#' If this column is not provided, data will be normalized before summarization.
+#' The second column stores information about connected sub-graphs of the
+#' peptide-protein graph. This column can be added with \code{\link{addClusterMembership}} function or
+#' omitted. In the second case, this information will be added before summarization.
+#'
+#' 2. Output format: a list that consists of the following items:
+#' \itemize{
+#' \item{FeatureLevelData:}{feature-level (input) data}
+#' \item{ProteinLevelData:}{protein-level (summarized) output data}
+#' \item{Weights:}{a table of final peptide-protein Weights}
+#' \item{ConvergenceSummary:}{table with information about convergence for each Cluster and Run}
+#' \item{WeightsHistory:}{optional data.table of Weights from all iterations of fitting algorithm}
+#' \item{ConvergenceHistory:}{optional data.table with sums of absolute values of differences between Weights from consecutive iteration}
+#' }
+#'
+#'
+#' For details about the method, please consult the vignette.
+#'
 #'
 #' @export
 #'
 getWeightedProteinSummary = function(feature_data,
                                      norm = "p_norm", norm_parameter = 1,
                                      weights_mode = "contributions",
-                                     tolerance = 1e-3, max_iter = 10,
+                                     tolerance = 1e-1, max_iter = 10,
                                      save_weights_history = FALSE,
                                      save_convergence_history = FALSE) {
     feature_data = checkDataCorrectness(feature_data)
@@ -37,7 +66,10 @@ getWeightedProteinSummary = function(feature_data,
     summaries
 }
 
-
+#' Calculate weighted summaries for a list of clusters
+#' @param cluster_input list of protein clusters
+#' @inheritParams getWeightedProteinSummary
+#' @keywords internal
 getClusterSummaries = function(cluster_input,
                                norm, norm_parameter,
                                weights_mode,
@@ -71,6 +103,8 @@ getClusterSummaries = function(cluster_input,
 }
 
 #' Robust summary for a single run
+#' @param peptide_protein_dt table of peptide-protein matches
+#' @inheritParams getWeightedProteinSummary
 #' @keywords internal
 getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
                                        norm, norm_parameter, weights_mode,
@@ -132,6 +166,10 @@ getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
 }
 
 
+#' Utility function to get weights from current iterations including 0s (removed features)
+#' @param weights table of weights (columns ProteinName, PSM, Weight)
+#' @inheritParams getWeightedSummarySingleRun
+#' @keywords internal
 getCurrentWeights = function(weights, peptide_protein_dt) {
     weights = merge(weights, peptide_protein_dt,
                     all.x = TRUE, all.y = TRUE,
@@ -139,4 +177,3 @@ getCurrentWeights = function(weights, peptide_protein_dt) {
     weights[, Weight := ifelse(is.na(Weight), 0, Weight)]
     weights[order(PSM, ProteinName)][, Weight]
 }
-
