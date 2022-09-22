@@ -4,7 +4,7 @@
 \alias{.getDesign}
 \title{Get design matrix for protein-level summarization}
 \usage{
-.getDesign(input, design_matrix)
+.getDesign(input)
 }
 \description{
 Get design matrix for protein-level summarization

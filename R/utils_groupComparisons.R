@@ -16,5 +16,5 @@ getGroupComparisons = function(contrast_matrix, ...) {
         group_comparison$Method = method
         group_comparison
     })
-    rbindlist(group_comparisons)
+    data.table::rbindlist(group_comparisons)
 }

@@ -2,20 +2,12 @@
 #'
 #' @param input data.table in MSstatsTMT format
 #' @param method_label name for a summarization method
-#' @param design_type "short" or "long" (not implemented yet)
 #' @param norm "p_norm" or "Huber"
 #' @param norm_parameter p for norm=="p_norm", M for norm=="Huber"
 #' @param weights_mode "contributions" for "sum to one" condition,
 #' "probabilities" for only "non-negative" condition.
-#' @param weights_method if "separate", weights will be estimated for each PSM
-#' separately, if "all", weights will be estimated jointly
 #' @param adaptive_huber if TRUE, M parameter for Huber norm will be updated
 #' in each iteration of the procedure
-#' @param initial_summary_method summarization method to start iterative procedure
-#' - "msstats" or "same"
-#' @param use_discordant if TRUE, discordant profiles will be used
-#' @param use_shared_initial if TRUE, shared peptides will be used in summary
-#' that initializes iterative procedure
 #' @param tolerance tolerance to indicate weights convergence
 #' @param max_iter maximum number of iteration of the procedure
 #'
@@ -28,17 +20,9 @@ getRobustSummary = function(input,
                             method_label= "",
                             norm = "p_norm", norm_parameter = 1,
                             weights_mode = "contributions",
-                            weights_method = "separate",
                             adaptive_huber = FALSE,
-                            initial_summary_method = "msstats",
-                            use_discordant = TRUE,
-                            equalize_protein_features = FALSE,
                             use_control = TRUE, control_pattern = NULL,
-                            tolerance = 1e-3,
-                            max_iter = 10) {
-    if (!is.element("Weight", colnames(input))) {
-        input[, Weight := 1, by = "PSM"]
-    }
+                            tolerance = 1e-3, max_iter = 10) {
     if (any(!is.finite(input$log2IntensityNormalized) | is.na(input$log2IntensityNormalized))) {
         input[,
               log2IntensityNormalized := ifelse(is.na(log2IntensityNormalized) |
@@ -51,12 +35,8 @@ getRobustSummary = function(input,
         getRobustSummarySingleRun(x, method_label,
                                   norm, norm_parameter,
                                   weights_mode,
-                                  weights_method, adaptive_huber,
-                                  initial_summary_method,
-                                  FALSE,
-                                  use_discordant,
-                                  equalize_protein_features,
-                                  use_control, control_pattern,
+                                  adaptive_huber,
+                                  use_control = TRUE, control_pattern = NULL,
                                   tolerance, max_iter)
     })
     summarized_output = rbindlist(lapply(output_by_run, function(x) x$summary))
@@ -74,27 +54,27 @@ getRobustSummarySingleRun = function(input,
                                      method_label,
                                      norm = "p_norm", norm_parameter = 1,
                                      weights_mode = "contributions",
-                                     weights_method = "all",
-                                     adaptive_huber = TRUE,
-                                     initial_summary_method = "msstats",
-                                     use_shared_initial = FALSE,
-                                     use_discordant = TRUE,
-                                     equalize_protein_features = FALSE,
+                                     adaptive_huber = FALSE,
                                      use_control = TRUE, control_pattern = NULL,
-                                     tolerance = 1e-3,
-                                     max_iter = 10) {
+                                     tolerance = 1e-3, max_iter = 10) {
     annotation = unique(input[, list(Run, Mixture, TechRepMixture,
                                      Channel, Condition, BioReplicate)])
     alphas_list = vector("list", max_iter)
-    input_loop = data.table::copy(input)
-    input_loop = unique(input_loop[, .(ProteinName, PSM, Channel, Condition, log2IntensityNormalized, Weight)])
+    input_loop = copy(input)
+    input_loop = unique(input_loop[, .(ProteinName, PSM, Channel, log2IntensityNormalized)])
     ppsm = unique(input[, .(ProteinName, PSM)])
     num_alpha_params = uniqueN(ppsm)
     current_alphas = rep(1, num_alpha_params)
     previous_alphas = rep(0, num_alpha_params)
-    initial_summary = getInitialSummary(input, method = initial_summary_method,
-                                        use_discordant, use_shared_initial,
-                                        norm, norm_parameter)
+
+    initial_summary_input = data.table::copy(input_loop)
+    initial_summary_input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
+    initial_summary_input[, HasUnique := any(IsUnique), by = "ProteinName"]
+    initial_summary_input = initial_summary_input[(IsUnique) | !HasUnique]
+
+    weights_df = unique(initial_summary_input[, list(ProteinName, PSM, Weight = 1)])
+    initial_summary = getWeightedSummary(initial_summary_input, weights_df, norm,
+                                         norm_parameter, FALSE, FALSE)
     input_loop = merge(input_loop,
                        initial_summary[, list(ProteinName, Channel, Abundance)],
                        by = c("ProteinName", "Channel"))
@@ -108,9 +88,12 @@ getRobustSummarySingleRun = function(input,
         alphas_df_round = alphas_df[Weight > 0.01]
         alphas_df_round[, Weight := Weight / sum(Weight), by = "PSM"]
         alphas_list[[iter]] = alphas_df_round
+        input_loop = merge(input_loop,
+                           unique(alphas_df_round[, .(PSM, ProteinName)]),
+                           by = c("ProteinName", "PSM"))
 
         new_abundances = getWeightedSummary(input_loop, alphas_df_round,
-                                            TRUE, norm, norm_parameter, TRUE,
+                                            norm, norm_parameter, TRUE,
                                             adaptive_huber)
         if (norm == "Huber" & adaptive_huber) {
             norm_parameter = attr(new_abundances, "M")
@@ -131,8 +114,9 @@ getRobustSummarySingleRun = function(input,
         }
     }
     summarized_output = merge(input_loop, annotation,
-                              by = c("Channel", "Condition"))
-    summarized_output = summarized_output[, !(colnames(summarized_output) %in% c("PSM", "log2IntensityNormalized")), with = FALSE]
+                              by = "Channel")
+    summarized_output[, Abundance := Abundance + global_intercept]
+    summarized_output = summarized_output[, !(colnames(summarized_output) %in% c("PSM", "log2IntensityNormalized", "global_intercept")), with = FALSE]
     summarized_output = unique(summarized_output)
     summarized_output$Method = method_label
     alpha_diffs = alpha_diffs[alpha_diffs > 0]

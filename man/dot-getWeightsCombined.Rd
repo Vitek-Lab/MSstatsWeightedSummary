@@ -8,8 +8,9 @@
   input,
   norm = "p_norm",
   norm_parameter = 1,
-  equalize_protein_features = FALSE,
-  weights_mode = "contributions"
+  weights_mode = "contributions",
+  use_control,
+  control_pattern
 )
 }
 \description{

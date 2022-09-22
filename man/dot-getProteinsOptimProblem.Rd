@@ -4,7 +4,14 @@
 \alias{.getProteinsOptimProblem}
 \title{Get optimization problem for protein-level summaries}
 \usage{
-.getProteinsOptimProblem(design_matrix, y, norm = "p_norm", norm_parameter = 1)
+.getProteinsOptimProblem(
+  design_matrix,
+  y,
+  norm,
+  norm_parameter,
+  proteins,
+  psms
+)
 }
 \description{
 Get optimization problem for protein-level summaries
