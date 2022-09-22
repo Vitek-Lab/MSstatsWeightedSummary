@@ -83,7 +83,6 @@ getRobustSummarySingleRun = function(input,
     while (sum(abs(current_alphas - previous_alphas)) > tolerance) {
         previous_alphas = current_alphas
         alphas_df = getAllWeights(input_loop, weights_method, norm, norm_parameter,
-                                  equalize_protein_features, weights_mode,
                                   use_control, control_pattern)
         alphas_df_round = alphas_df[Weight > 0.01]
         alphas_df_round[, Weight := Weight / sum(Weight), by = "PSM"]

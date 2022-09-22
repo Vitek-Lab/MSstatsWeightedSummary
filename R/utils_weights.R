@@ -56,6 +56,7 @@ getAllWeights = function(input, norm, norm_parameter, weights_mode,
         psms_protein_tbl,
         by = c("PSM", "Channel"), all.x = T, all.y = T
     )
+    wide = data.table::as.data.table(wide)
 
     y_full = wide$log2IntensityNormalized
     x_full = as.matrix(wide[, -(1:2), with = FALSE])
@@ -110,27 +111,13 @@ getAllWeights = function(input, norm, norm_parameter, weights_mode,
         })
     }), FALSE, FALSE), FALSE, FALSE))
 
-    if (equalize_protein_features) {
-        if (weights_mode == "contributions") {
-            constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-                                    constraint_matrix_full %*% params_full == c(rep(1, n_conditions),
-                                                                                rep(0, nrow(constraint_matrix_full) - n_conditions)),
-                                    one_weight_constraint %*% params_full == rep(0, nrow(one_weight_constraint)))
-        } else {
-            constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-                                    positive_matrix %*% params_full <= rep(1, n_params),
-                                    one_weight_constraint %*% params_full == rep(0, nrow(one_weight_constraint)))
-        }
+    if (weights_mode == "contributions") {
+        constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
+                                constraint_matrix_full %*% params_full == c(rep(1, n_conditions),
+                                                                            rep(0, nrow(constraint_matrix_full) - n_conditions)))
     } else {
-        if (weights_mode == "contributions") {
-            constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-                                    constraint_matrix_full %*% params_full == c(rep(1, n_conditions),
-                                                                                rep(0, nrow(constraint_matrix_full) - n_conditions)))
-        } else {
-            constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-                                    positive_matrix %*% params_full <= rep(1, n_params))
-        }
-
+        constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
+                                positive_matrix %*% params_full <= rep(1, n_params))
     }
 
     if (norm == "p_norm") {
