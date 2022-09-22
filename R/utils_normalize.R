@@ -3,6 +3,8 @@
 #' @inheritParams getWeightedProteinSummary
 #'
 #' @return data.table
+#'
+#' @author based on MSstatsTMT code by Ting Huang
 #' @export
 #'
 normalizeSharedPeptides = function(feature_data) {

@@ -15,3 +15,6 @@ data.table
 \description{
 Normalization for TMT data with shared peptides
 }
+\author{
+based on MSstatsTMT code by Ting Huang
+}

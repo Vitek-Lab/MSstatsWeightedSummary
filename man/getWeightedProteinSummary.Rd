@@ -9,7 +9,7 @@ getWeightedProteinSummary(
   norm = "p_norm",
   norm_parameter = 1,
   weights_mode = "contributions",
-  tolerance = 0.001,
+  tolerance = 0.1,
   max_iter = 10,
   save_weights_history = FALSE,
   save_convergence_history = FALSE
