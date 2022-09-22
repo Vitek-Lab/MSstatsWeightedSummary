@@ -9,8 +9,8 @@
 #' @export
 #'
 createPeptideProteinGraph = function(quantification_data,
-                                   protein_column = "ProteinName",
-                                   peptide_column = "PeptideSequence") {
+                                     protein_column = "ProteinName",
+                                     peptide_column = "PeptideSequence") {
     igraph::graph_from_data_frame(
         unique(quantification_data[, c(protein_column, peptide_column),
                                    with = FALSE]),
@@ -89,7 +89,8 @@ getClusterStatistics = function(quantification_data, merge = FALSE) {
 #'
 #' @export
 #'
-plotClusterStats = function(cluster_statistics, statistic, only_clusters_with_shared = FALSE) {
+plotClusterStats = function(cluster_statistics, statistic,
+                            only_clusters_with_shared = FALSE) {
     if (only_clusters_with_shared) {
         shared_filter = cluster_statistics$NumProteins > 1
     } else {
@@ -117,7 +118,6 @@ plotClusterStats = function(cluster_statistics, statistic, only_clusters_with_sh
 
     ggplot(data_to_plot, aes_string(x = statistic)) +
         geom +
-        # scale_y_log10() +
         ylab(y_label) +
         theme_bw()
 }

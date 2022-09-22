@@ -2,16 +2,16 @@
 % Please edit documentation in R/utils_normalize.R
 \name{normalizeSharedPeptides}
 \alias{normalizeSharedPeptides}
-\title{Normalization for TMT data}
+\title{Normalization for TMT data with shared peptides}
 \usage{
-normalizeSharedPeptides(input)
+normalizeSharedPeptides(feature_data)
 }
 \arguments{
-\item{input}{data.table}
+\item{feature_data}{data.table in MSstatsTMT format. See also the Details section}
 }
 \value{
 data.table
 }
 \description{
-Normalization for TMT data
+Normalization for TMT data with shared peptides
 }

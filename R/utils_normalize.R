@@ -1,24 +1,21 @@
-#' Normalization for TMT data
-#' @param input data.table
+#' Normalization for TMT data with shared peptides
+#'
+#' @inheritParams getWeightedProteinSummary
 #'
 #' @return data.table
 #' @export
 #'
-normalizeSharedPeptides = function(input) {
+normalizeSharedPeptides = function(feature_data) {
     Intensity = log2Intensity = NULL
 
-    pp_match = unique(input[, list(ProteinName, PeptideSequence)])
-    annotation = unique(input[, list(Run, Mixture, TechRepMixture,
+    pp_match = unique(feature_data[, list(ProteinName, PeptideSequence)])
+    annotation = unique(feature_data[, list(Run, Mixture, TechRepMixture,
                                      Channel, BioReplicate, Condition)])
-    to_normalize = unique(input[, list(PeptideSequence, Charge, PSM,
+    to_normalize = unique(feature_data[, list(PeptideSequence, Charge, PSM,
                                        Run, Channel, Intensity)])
     to_normalize[, log2Intensity := log(Intensity, 2)]
 
-    if (any(!is.na(to_normalize$Intensity) & to_normalize$Intensity < 1)) {
-        to_normalize[, log2Intensity := ifelse(!is.na(Intensity) & Intensity < 1,
-                                        NA, log2Intensity)]
-    }
-    to_normalize = .normalizePeptides(to_normalize)
+    to_normalize = normalizePeptides(to_normalize)
     if (any(to_normalize$Intensity < 1 & !is.na(to_normalize$Intensity))) {
         to_normalize[, log2Intensity := ifelse(Intensity < 1 & !is.na(Intensity),
                                         NA, log2Intensity)]
@@ -33,11 +30,10 @@ normalizeSharedPeptides = function(input) {
 
 
 #' Normalization between channels (before summarization)
-#' @param input data.table
-#' @param normalize logical, if TRUE, `input` data will be normalized
+#' @inheritParams getWeightedProteinSummary
 #' @return data.table
 #' @keywords internal
-.normalizePeptides = function(input) {
+normalizePeptides = function(feature_data) {
     log2Intensity = Intensity = Run = Channel = NULL
     MedianLog2Int = Diff = NULL
 
@@ -49,7 +45,6 @@ normalizeSharedPeptides = function(input) {
     )
     input[, Diff := median_baseline - MedianLog2Int]
     input[, log2IntensityNormalized := log2Intensity + Diff]
-    # input[, log2Intensity := log2IntensityNormalized]
     input[, Intensity := 2 ^ log2IntensityNormalized]
     input[, Diff := NULL]
 
