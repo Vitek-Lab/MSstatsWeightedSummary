@@ -9,8 +9,8 @@
 #' @export
 #'
 createPeptideProteinGraph = function(quantification_data,
-                                   protein_column = "ProteinName",
-                                   peptide_column = "PeptideSequence") {
+                                     protein_column = "ProteinName",
+                                     peptide_column = "PeptideSequence") {
     igraph::graph_from_data_frame(
         unique(quantification_data[, c(protein_column, peptide_column),
                                    with = FALSE]),

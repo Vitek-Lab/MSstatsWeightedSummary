@@ -3,63 +3,68 @@
 #' @param weights_df data.table with weights.
 #' @param use_shared if TRUE, shared peptides will be used.
 #' @export
-getWeightedSummary = function(input, weights_df,
-                              norm, norm_parameter,
-                              use_shared) {
-    input = merge(input[, list(ProteinName, PSM, Channel,
-                               log2IntensityNormalized)],
-                  weights_df, by = c("ProteinName", "PSM"))
-    proteins = unique(input[["ProteinName"]])
-    psms = unique(input[["PSM"]])
+summarizeProteinsClusterSingleRun = function(feature_data, weights,
+                                             norm, norm_parameter,
+                                             use_shared) {
+    run = unique(feature_data[, Run])
+    feature_data = merge(feature_data[, list(ProteinName, PSM, Channel,
+                                             log2IntensityNormalized)],
+                         weights, by = c("ProteinName", "PSM"))
+    proteins = unique(feature_data[["ProteinName"]])
+    psms = unique(feature_data[["PSM"]])
 
     if (!use_shared) {
-        input[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
-        input[, HasUnique := any(IsUnique), by = "ProteinName"]
-        input = input[(IsUnique) | !(HasUnique)]
-        input = unique(input)
+        feature_data[, IsUnique := data.table::uniqueN(ProteinName) == 1, by = "PSM"]
+        feature_data[, HasUnique := any(IsUnique), by = "ProteinName"]
+        feature_data = feature_data[(IsUnique) | !(HasUnique)]
+        feature_data = unique(feature_data)
     }
-    design = .getDesign(input)
+    design = getProteinSummaryDesign(feature_data)
     design_matrix = design[["matrix"]]
     y = design[["response"]]
-    optimization_problem = .getProteinsOptimProblem(design_matrix, y,
-                                                    norm, norm_parameter,
-                                                    proteins, psms)
+    optimization_problem = getProteinsOptimProblem(design_matrix, y,
+                                                   norm, norm_parameter,
+                                                   proteins, psms)
     solution = CVXR::solve(optimization_problem)
 
-    estimated_abundances = .processProteinSolution(solution, optimization_problem,
-                                                   input, design_matrix)
-    estimated_abundances
+    estimated_abundances = processProteinOptimSolution(solution,
+                                                       optimization_problem,
+                                                       feature_data,
+                                                       design_matrix)
+    estimated_abundances[, Run := run]
+    estimated_abundances[, .(ProteinName, Run, Channel,
+                             CenteredAbundance, Abundance)]
 }
 
 #' Get design matrix for protein-level summarization
 #' @keywords internal
-.getDesign = function(input) {
+getProteinSummaryDesign = function(feature_data) {
     cols = c("PSM", "Channel", "log2IntensityNormalized")
 
-    protein_intercepts = unique(input[, .(ProteinName, PSM, Channel, Weight)])
+    protein_intercepts = unique(feature_data[, .(ProteinName, PSM, Channel, Weight)])
     protein_intercepts = data.table::dcast(protein_intercepts,
                                            PSM + Channel ~ ProteinName,
                                            value.var = "Weight", fill = 0)
 
-    feature_intercepts = unique(input[, .(PSM, Channel, Present = 1)])
+    feature_intercepts = unique(feature_data[, .(PSM, Channel, Present = 1)])
     feature_intercepts = data.table::dcast(feature_intercepts,
                                            PSM + Channel ~ PSM,
                                            value.var = "Present", fill = 0)
 
-    channel_design = unique(input[, .(ProteinName, PSM, Channel, Weight)])
+    channel_design = unique(feature_data[, .(ProteinName, PSM, Channel, Weight)])
     channel_design = data.table::dcast(channel_design,
                                        PSM + Channel ~ ProteinName + Channel,
                                        value.var = "Weight", fill = 0,
                                        sep = "__")
 
-    intensities = unique(input[, .(PSM, Channel, log2IntensityNormalized)])
+    intensities = unique(feature_data[, .(PSM, Channel, log2IntensityNormalized)])
 
     dm = merge(intensities, channel_design, by = c("PSM", "Channel"))
     dm = merge(dm, feature_intercepts, by = c("PSM", "Channel"))
     dm = merge(dm, protein_intercepts, by = c("PSM", "Channel"))
     dm[["intercept"]] = 1
 
-    proteins = unique(input[["ProteinName"]])
+    proteins = unique(feature_data[["ProteinName"]])
     y = dm[["log2IntensityNormalized"]]
     dm = dm[, !(colnames(dm) %in% cols), with = FALSE]
     list(matrix = as.matrix(dm),
@@ -68,8 +73,8 @@ getWeightedSummary = function(input, weights_df,
 
 #' Get optimization problem for protein-level summaries
 #' @keywords internal
-.getProteinsOptimProblem = function(design_matrix, y, norm,
-                                    norm_parameter, proteins, psms) {
+getProteinsOptimProblem = function(design_matrix, y, norm,
+                                   norm_parameter, proteins, psms) {
     num_params = ncol(design_matrix)
 
     protein_intercepts_condition = matrix(0, nrow = 1, ncol = num_params)
@@ -85,9 +90,9 @@ getWeightedSummary = function(input, weights_df,
     feature_condition = matrix(0, nrow = 1, ncol = num_params)
     feature_condition[colnames(design_matrix) %in% psms] = 1
 
-    conditions = rbind(protein_intercepts_condition,
-                       protein_profile_conditions,
-                       feature_condition)
+    constraints = rbind(protein_intercepts_condition,
+                        protein_profile_conditions,
+                        feature_condition)
 
     params = CVXR::Variable(num_params)
     if (norm == "p_norm") {
@@ -98,35 +103,50 @@ getWeightedSummary = function(input, weights_df,
                                                    M = norm_parameter)))
     }
     prob = CVXR::Problem(objective,
-                         list(conditions %*% params == 0))
+                         list(constraints %*% params == 0))
     prob
 }
 
 #' Get protein abundances from optimization result
 #' @keywords internal
-.processProteinSolution = function(solution, optimization_problem,
-                                   input, design_matrix) {
-    num_channels = uniqueN(input$Channel)
-    num_proteins = uniqueN(input$ProteinName)
-    protein_values = solution$getValue(CVXR::variables(optimization_problem)[[1]])
-    baseline = protein_values[length(protein_values)]
-    protein_intercepts = protein_values[colnames(design_matrix) %in% unique(input$ProteinName)]
+processProteinOptimSolution = function(solution, optimization_problem,
+                                       feature_data, design_matrix) {
+    # TODO: turn this into a function which fixes feature, design,
+    # optimization and returns summary per solution,
+    # see if it's faster
+    num_channels = data.table::uniqueN(feature_data[, Channel])
+    num_proteins = data.table::uniqueN(feature_data[, ProteinName])
 
-    param_names = colnames(design_matrix)
-    result = data.table(label = param_names,
-                        value = protein_values[, 1])
-    protein_channel_names = stringr::str_split(result$label, "__")
-    is_prot_channel = sapply(protein_channel_names, function(x) length(x) == 2)
+    if (!(solution[["status"]] == "solver_error")) {
+        param_names = colnames(design_matrix)
+        estimated = solution$getValue(CVXR::variables(optimization_problem)[[1]])
+        baseline = estimated[param_names == "intercept"]
 
-    protein_intercepts = result[label %in% unique(input[["ProteinName"]])]
-    setnames(protein_intercepts, c("ProteinName", "intercept"))
+        is_prot = param_names %in% unique(feature_data[, ProteinName])
+        is_channel = grepl("__", param_names)
 
-    result = result[is_prot_channel]
-    protein_channel_names = protein_channel_names[is_prot_channel]
-    result[, ProteinName := sapply(protein_channel_names, function(x) x[1])]
-    result[, Channel := sapply(protein_channel_names, function(x) x[2])]
-    result = merge(result, protein_intercepts, by = "ProteinName")
-    result[, global_intercept := baseline]
-    result[, Abundance := value + intercept]
-    result[, list(ProteinName, Channel, Abundance, global_intercept)]
+        protein_intercepts = data.table::data.table(
+            ProteinName = param_names[is_prot],
+            protein_intercept = estimated[is_prot]
+        )
+
+        protein_channel_names = stringr::str_split(param_names, "__")[is_channel]
+        channels = estimated[is_channel]
+        channels_dt = data.table::data.table(
+            ProteinName = sapply(protein_channel_names,
+                                 function(x) x[[1]]),
+            Channel = sapply(protein_channel_names,
+                             function(x) x[[2]]),
+            ChannelValue = channels
+        )
+
+        result = merge(channels_dt, protein_intercepts, by = "ProteinName")
+        result[, Intercept := baseline]
+        result[, Abundance := ChannelValue + protein_intercept + Intercept]
+        result[, CenteredAbundance := ChannelValue + protein_intercept]
+        result[, list(ProteinName, Channel, CenteredAbundance, Abundance)]
+    } else {
+        # TODO: implement something reasonable here
+    }
 }
+
