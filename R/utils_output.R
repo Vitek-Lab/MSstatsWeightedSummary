@@ -12,6 +12,7 @@ processSummarizationOutput = function(summary_per_cluster,
     summary = data.table::rbindlist(lapply(summary_per_cluster,
                                            function(x) x[["summary"]]))
     summary = merge(summary, annotation, by = c("Run", "Channel"))
+    data.table::setnames(summary, "ProteinName", "Protein")
     weights_summary = getWeightsSummary(summary_per_cluster)
     weights_history = getWeightsHistory(summary_per_cluster,
                                         save_weights_history)
