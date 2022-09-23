@@ -27,7 +27,7 @@
 #' peptide-protein graph. This column can be added with \code{\link{addClusterMembership}} function or
 #' omitted. In the second case, this information will be added before summarization.
 #'
-#' 2. Output format: a list that consists of the following items:
+#' 2. Output format: an S4 object of class "MSstatsWeightedSummary" which consists of the following items:
 #' \itemize{
 #' \item{FeatureLevelData:}{feature-level (input) data}
 #' \item{ProteinLevelData:}{protein-level (summarized) output data}
@@ -36,10 +36,12 @@
 #' \item{WeightsHistory:}{optional data.table of Weights from all iterations of fitting algorithm}
 #' \item{ConvergenceHistory:}{optional data.table with sums of absolute values of differences between Weights from consecutive iteration}
 #' }
+#' Elements of this object can be accessed with functions
+#' \code{\link{featureData}}, \code{\link{proteinData}},
+#' \code{\link{featurWeights}}, \code{\link{convergenceSummary}},
+#' \code{\link{weightsHistory}}, \code{\link{convergenceHistory}}
 #'
-#'
-#' For details about the method, please consult the vignette.
-#'
+#' For statistical details about the method, please consult the vignette.
 #'
 #' @export
 #'
