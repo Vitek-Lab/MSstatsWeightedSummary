@@ -267,7 +267,7 @@ getWeightsSummary = function(summary_per_cluster) {
                            weights
                        }))
                }))
-    weights[, IsUnique := data.table::uniqueN(ProteinName),
+    weights[, IsUnique := data.table::uniqueN(ProteinName) == 1,
             by = "PSM"]
     weights
 }
