@@ -1,0 +1,213 @@
+---
+title: "Protein Quantification with Shared Peptides: Workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Protein Quantification with Shared Peptides: Workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+
+
+# Introduction: statistical model
+
+We will illustrate the proposed workflow for summarization of sets of proteins with shared peptides.
+
+Let us consider a group of $K$ proteins that share peptides.
+For each spectral Feature $f$ we define the following set:
+\begin{equation*}
+    V(f) = \{k \in 1, \ldots, K: \text{ Feature f matches to Protein k}\}
+\end{equation*}
+We propose the following model for summarization:
+\begin{multline}
+    X_{cf} = \mu + \sum_{k \in V(f)}Weight_{fk}\left(Protein_k + Channel_{kc}\right) + Feature_{f} + \varepsilon_{cf}, \\
+    \forall_k \sum_{c = 1}^{C}Channel_{kc} = 0, \sum_{k = 1}^{K}Protein_k = 0, \sum_{f = 1}^{F} Feature_{f} = 0, \mathbb{E}\varepsilon_{cf} = 0, \varepsilon_{cf}\, iid %\stackrel{iid}{\sim} \mathcal{N}(0, \sigma^2)
+\end{multline}
+subject to the following constraints:
+\begin{eqnarray*}
+\forall_{f} \sum_{k \in V(k)}Weight_{fk} &= 1, \\
+\forall_{f, k} Weight_{fk} &\geq 0,
+\end{eqnarray*}
+where $X_{cf}$ denotes the log-intensity of Feature $f$ in Channel $c$, $Feature_{f}$ is a fixed effect associated with spectral features and $\varepsilon_{cf}$ denotes random error.
+As the model is fitted for each Run $mt$ separately, indices $f$ and $c$ should be understood as $f(mt)$ and $c(mt)$, respectively.
+The sum of effects $\mu + Protein_k + Channel_{kc}$ describes the abundance of protein $k$ in channel $c$.
+Parameter $Protein_k$ describes the baselines abundance of $k-th$ protein, while the term $Channel_{kc}$ allows us to model the shape of protein-level profile.
+Thus, protein-level summary for protein $k$ in Run $mt$ is given by $\widehat{Y}_{kc} = \hat{\mu} + \widehat{Protein}_{k} + \widehat{Channel}_{kc}$.
+Statistical and implementation details can be found in accompying paper (see `citation("MSstatsWeightedSummary")`).
+In short, the model is fitted for each cluster of proteins separately via an iterative procedure which alternates between fixing Weights and estimating other effects, and estimating Weights while holding other parameters fixed.
+
+# Protein summarization workflow
+
+First, let us load the required packages:
+
+```{r }
+library(MSstatsWeightedSummary)
+library(ggplot2)
+library(data.table)
+library(MSstatsTMT)
+```
+
+## Input format and example data
+
+We will use the following simulated data set as an example:
+
+```{r }
+data(simulated_dataset)
+head(simulated_dataset)
+```
+
+This data set contains some additional columns. Required input consists of the same columns as MSstatsTMT format:
+ProteinName, PeptideSequence, Charge, PSM, Run, Channel, Intensity, Condition, BioReplicate, Mixture, TechRepMixture.
+
+```{r }
+required_input = simulated_dataset[, .(ProteinName, PeptideSequence, Charge, PSM, Run, 
+                           Channel, Intensity, Condition, BioReplicate,
+                           Mixture, TechRepMixture)]
+head(required_input)
+```
+
+There are three proteins in this data set. Each protein has one unique peptide and shares multiple peptide with every other protein. 
+
+```{r , include = FALSE}
+ggplot(simulated_dataset, aes(x = reorder(Channel, as.numeric(as.character(Channel))),
+                              y = log2IntensityNormalized, group = PSM,
+                              color = ifelse(IsUnique, "unique", "shared"))) +
+    geom_line(size = 1.2) +
+    facet_wrap(~ProteinName) +
+    theme_bw() +
+    theme(legend.position = "bottom") +
+    xlab("Channel") +
+    ylab("log-intensity") +
+    scale_color_discrete(name = "feature")
+```
+
+## Finding protein clusters
+
+If output of signal processing tools lists all proteins that match to a given protein, data should be converted to a format where each row corresponds to a single observation of intensity by Protein, PSM, Run and Channel.
+This means that shared peptides will appear multiple times in the PSM table, once for each matching protein.
+If the output only lists a single protein, `adjustProteinAssignments` function can be used to add all candidate proteins via sequence matching.
+The example data set already includes all possiblities.
+
+This package provides tools for finding connected components of the peptide-protein graph. 
+Functions `createPeptideProteinGraph` and `addClusterMembership` can be used to annotate the data set with IDs of protein clusters, as illustrated below.
+
+```{r }
+pp_graph = createPeptideProteinGraph(required_input)
+required_input = addClusterMembership(required_input, pp_graph)
+unique(required_input[, .(Cluster, ProteinName)])
+```
+Functions `getClusterStatistics` and `plotClusterStats` can be used to calculate and visualize additional summary statistics such as counts of unique and shared peptides in each cluster.
+
+## Normalization
+
+In the format with duplicated rows for shared peptides, normalization requires care. To ensure that each feature intensity is used only once for normalization, we provide a function called `normalizeSharedPeptides`. This function performs feature-level normalization of data previously implemented in MSstatsTMT package. As a result, a column called `log2IntensityNormalized` is added to the  data.
+
+```{r }
+head(simulated_dataset[, .(ProteinName, PSM, Run, Channel, log2IntensityNormalized)])
+```
+
+
+## Summarization
+
+Protein-level summarization is the main functionality of this package. We extend the MSstatsTMT workflow by jointly estimating the abundance of all proteins in a given protein cluster. This is done via an iterative procedure implemented in the `getWeightedProteinSummary` function.
+This function requires following input:
+
+  - `feature_data`: input data in MSstatsTMT format. If columns `Cluster` and `log2IntensityNormalized` are not provided, clusters will be computed and the log-intensity column will be added under the assumption that intensities have been normalized,
+  - `norm`: norm for the residuals (objective function): can be equal to "Huber" (Huber norm/loss) or "p_norm" (p-norm). 
+  - `norm_parameter`: value of p parameter (for `norm` = "p_norm") or M parameter of Huber loss (for `norm` = "Huber").
+  - `weights_mode`: "contributions" or "probabilities". The former option constraints feature-protein weights to be non-negative and sum to 1 for each feature, the latter option removes the "sum to 1" condition, instead restricting weights to [0, 1] interval. Defaults to "contributions".
+  - `tolerance`: tolerance for differences between weights in the iterative procedure.
+  - `max_iter`: maximum number of iterations of the iterative fitting algorithm.
+  - `save_weights_history`: if TRUE, weights from each iteration will be included in the output.
+  - `save_convergence_history`: if TRUE, differences between weights from consecutive iterations will be included in the output.
+
+```{r }
+summary = getWeightedProteinSummary(simulated_dataset, norm = "Huber",
+                                    norm_parameter = 0.1,
+                                    max_iter = 30)
+```
+
+Output of this function is an object of class "MSstatsWeightedSummary". 
+The next section explains how to access elements of this object.
+
+Two additional functions are provided for users who require more customized workflow.
+Function `getPeptideProteinWeights` calculates feature-protein weights for a given combination of protein-level summary and feature-level data, while `summarizeProteinsClusterSingleRun` estimates protein-level data for a given set of weights and data from a single MS run.
+
+
+## Diagnostics and plotting
+
+Output of the `getWeightedProteinSummary` function is an extension of the output of `proteinSummarization` from MSstatsTMT.
+It includes the following elements: 
+
+  - feature-level (input) data accessed with `featureData` function,
+  - protein-level (summary) data accessed with `proteinData` function,
+  - final feature-protein weights accessed with `featureWeights` function,
+  - information about convergence of the algorithm accessed with `convergenceSummary` function,
+  - optional history of convergence accessed with `convergenceHistory` function,
+  - optional history of weights accessed with `weightsHistory` function.
+
+
+```{r }
+head(featureData(summary)) # feature-level input data
+```
+
+```{r }
+head(proteinData(summary)) # output summary
+```
+
+```{r }
+featureWeights(summary, shared_only = TRUE) # Weights
+```
+```{r }
+convergenceSummary(summary)
+```
+Summary can be plotted for a given cluster or set of proteins using `plotSummary` function.
+
+```{r }
+plotSummary(summary, cluster = 1)
+```
+
+It is also possible to obtain protein cluster information via `proteinClusters` function.
+
+## MSstatsTMT workflow
+
+Function `makeMSstatsTMTInput` can be used to convert output of summarization to a format suitable for use with the `groupComparisonTMT` function.
+Optional parameter `msstatstmt_output` can be provided to merge output of `proteinSummarization` with shared peptides-based summary.
+
+Currently, since protein-level normalization is done in the proteinSummarization step of MSstats workflow, it is not possible to use "Norm" Channel to jointly normalize output of unique-peptide based summarization (done with MSstatsTMT) and cluster summarization (done with MSstatsWeightedSummary) using functionalities of either of the packages.
+We intend to add this feature in the future.
+
+```{r }
+gc_input = makeMSstatsTMTInput(summary)
+str(gc_input)
+```
+
+```{r }
+# Contrasts matrix
+cm = matrix(c(-1, 0, 0, 0, 1, 0, 0, 0,
+              0, -1, 0, 0, 0, 1, 0, 0,
+              0, 0, -1, 0, 0, 0, 1, 0,
+              0, 0, 0, -1, 0, 0, 0, 1),
+            byrow = TRUE, ncol = 8)
+colnames(cm) = as.character(1:8)
+row.names(cm) = paste(1:4, "vs", 5:8)
+
+
+gc_output = groupComparisonTMT(gc_input, cm, use_log_file = FALSE)
+gc_output$ComparisonResult
+```
+
+<!-- plotDistributionComparison	Compare distribution of log2-intensities per channel with and without shared peptides -->
+<!-- plotProfiles	Plot feature profiles -->
+<!-- plotSummaryComparison	Plot multiple protein-level summaries -->
+<!-- getWeightsConstraints	Get constraints for weights : remove help? --> 
