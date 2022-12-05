@@ -129,7 +129,7 @@ setGeneric("proteinClusters",
 setMethod("proteinClusters", "MSstatsWeightedSummary",
           function(weighted_summary) {
               feature_data = weighted_summary@FeatureLevelData
-              cluster_data = unique(feature_data[, .(Cluster, ProteinName)])
+              cluster_data = unique(feature_data[, .(Run, Cluster, ProteinName)])
               cluster_data
           })
 
@@ -259,16 +259,20 @@ getWeightsSummary = function(summary_per_cluster) {
                        lapply(names(final_weights_per_run), function(run_id) {
                            n_iters = length(final_weights_per_run[[run_id]])
                            weights = final_weights_per_run[[run_id]][[n_iters]]
+                           weights[, Run := run_id]
                            weights = merge(weights, peptide_protein_dt,
-                                           by = c("ProteinName", "PSM"),
+                                           by = c("ProteinName", "PSM", "Run"),
                                            all.x = TRUE, all.y = TRUE)
                            weights[, Weight := ifelse(is.na(Weight), 0, Weight)]
-                           weights[, Run := run_id]
+                           weights[, Total := sum(Weight),
+                                   by = c("ProteinName", "Run")]
+                           weights = weights[Total > 0]
+                           weights[, Total := NULL]
                            weights
                        }))
                }))
     weights[, IsUnique := data.table::uniqueN(ProteinName) == 1,
-            by = "PSM"]
+            by = c("PSM", "Run")]
     weights
 }
 

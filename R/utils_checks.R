@@ -21,8 +21,14 @@ checkDataCorrectness = function(feature_data) {
         feature_data = feature_data[, all_columns, with = FALSE]
 
         if (!is.element("Cluster", colnames(feature_data))) {
-            pp_graph = createPeptideProteinGraph(feature_data)
-            feature_data = addClusterMembership(feature_data, pp_graph)
+            by_run = split(feature_data, feature_data[["Run"]])
+            by_run = lapply(by_run, function(x) {
+                pp_graph = createPeptideProteinGraph(x)
+                x = addClusterMembership(x, pp_graph)
+                x
+            })
+            feature_data = data.table::rbindlist(by_run)
+            feature_data[, Cluster := paste(Cluster, Run, sep = "__")]
         }
         feature_data
     }
