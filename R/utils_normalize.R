@@ -39,16 +39,16 @@ normalizePeptides = function(feature_data) {
     log2Intensity = Intensity = Run = Channel = NULL
     MedianLog2Int = Diff = NULL
 
-    input[, MedianLog2Int := median(log2Intensity, na.rm = TRUE),
-          by = c("Run", "Channel")]
+    feature_data[, MedianLog2Int := median(log2Intensity, na.rm = TRUE),
+                   by = c("Run", "Channel")]
     median_baseline = median(
-        unique(input[, list(Run, Channel, MedianLog2Int)])[, MedianLog2Int],
+        unique(feature_data[, list(Run, Channel, MedianLog2Int)])[, MedianLog2Int],
         na.rm = TRUE
     )
-    input[, Diff := median_baseline - MedianLog2Int]
-    input[, log2IntensityNormalized := log2Intensity + Diff]
-    input[, Intensity := 2 ^ log2IntensityNormalized]
-    input[, Diff := NULL]
+    feature_data[, Diff := median_baseline - MedianLog2Int]
+    feature_data[, log2IntensityNormalized := log2Intensity + Diff]
+    feature_data[, Intensity := 2 ^ log2IntensityNormalized]
+    feature_data[, Diff := NULL]
 
-    input[, !(colnames(input) == "MedianLog2Int"), with = FALSE]
+    feature_data[, !(colnames(input) == "MedianLog2Int"), with = FALSE]
 }
