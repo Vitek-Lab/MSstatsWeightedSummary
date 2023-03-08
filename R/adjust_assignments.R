@@ -24,7 +24,8 @@ adjustProteinAssignments = function(quantification_data, fasta_db_path,
     quantification_data = quantification_data[, !protein_col, with = FALSE]
 
     all_peptide_sequences = unique(quantification_data[[peptide_column]])
-    peptides_no_modifications = gsub("[^A-Z]", "", all_peptide_sequences)
+    peptides_no_flanking = stringr::str_replace_all(all_peptide_sequences, pattern = "\\[[A-Z]+\\]", replacement = "")
+    peptides_no_modifications = gsub("[^A-Z]", "", peptides_no_flanking)
 
     all_proteins = Biostrings::readAAStringSet(fasta_db_path)
     matching_proteins = data.table::rbindlist(
