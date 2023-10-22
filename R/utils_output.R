@@ -194,23 +194,23 @@ setGeneric("makeMSstatsTMTInput",
 #' @return list
 setMethod("makeMSstatsTMTInput", "MSstatsWeightedSummary",
           function(weighted_summary, msstatstmt_output = NULL) {
-            feature_data = weighted_summary@FeatureLevelData
-            protein_data = weighted_summary@ProteinLevelData
-  
-            if (is.null(msstatstmt_output)) {
-              list(FeatureLevelData = feature_data,
-                   ProteinLevelData = protein_data)
-            } else {
-              mstmt_feature = msstatstmt_output[["FeatureLevelData"]]
-              mstmt_protein = msstatstmt_output[["ProteinLevelData"]]
-              list(FeatureLevelData = rbind(feature_data,
-                                            mstmt_feature, 
-                                            use.names = TRUE, fill = TRUE),
-                   ProteinLevelData = rbind(protein_data,
-                                            mstmt_protein, 
-                                            use.names = TRUE, fill = TRUE))
-            }
-})
+              feature_data = weighted_summary@FeatureLevelData
+              protein_data = weighted_summary@ProteinLevelData
+
+              if (is.null(msstatstmt_output)) {
+                  list(FeatureLevelData = feature_data,
+                       ProteinLevelData = protein_data)
+              } else {
+                  mstmt_feature = msstatstmt_output[["FeatureLevelData"]]
+                  mstmt_protein = msstatstmt_output[["ProteinLevelData"]]
+                  list(FeatureLevelData = rbind(feature_data,
+                                                mstmt_feature,
+                                                use.names = TRUE, fill = TRUE),
+                       ProteinLevelData = rbind(protein_data,
+                                                mstmt_protein,
+                                                use.names = TRUE, fill = TRUE))
+              }
+          })
 
 
 #' Prepare summarizaton output

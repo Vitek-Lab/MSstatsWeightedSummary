@@ -6,15 +6,34 @@
 #' @export
 getPeptideProteinWeights = function(feature_data,
                                     norm = "p_norm", norm_parameter = 1,
-                                    weights_mode = "contributions") {
+                                    weights_mode = "contributions",
+                                    weights_penalty = FALSE,
+                                    weights_penalty_param = 0.1) {
     weights_design = getWeightsDesign(feature_data)
     design_matrix = weights_design[["x"]]
     y = weights_design[["y"]]
+    is_non_missing = !is.na(y)
+
+    y = y[is_non_missing]
+    design_matrix = design_matrix[is_non_missing, ]
 
     cols = colnames(design_matrix)
     cols_split = stringr::str_split(cols, "__") # TODO: STRINGR -> STRINGI
     psms_cols = sapply(cols_split, function(x) x[1])
     protein_cols = sapply(cols_split, function(x) if (length(x) == 1) NA else x[-1])
+
+    if (weights_penalty) {
+        feature_data[, NumPeptidesPerProtein := uniqueN(ProteinName), by = "PSM"]
+        feature_data[, EqualWeights := 1 / NumPeptidesPerProtein]
+        equal_weights = unique(feature_data[, .(PSM, ProteinName, EqualWeights)])[, EqualWeights]
+        names(equal_weights) = unique(feature_data[, .(PSM, ProteinName, EqualWeights)])[, paste(PSM, ProteinName, sep = "__")]
+        colnames(design_matrix)
+
+        equal_weights_vals = equal_weights[colnames(design_matrix)]
+        equal_weights_vals = ifelse(is.na(equal_weights_vals), 0, equal_weights_vals)
+        equal_weights_vals = unname(equal_weights_vals)
+        multiplier = ifelse(equal_weights_vals == 0, 0, 1)
+    }
 
     params_full = CVXR::Variable(ncol(design_matrix)) # n_params defined earlier and passed to function below?
     constraints = getWeightsConstraints(params_full,
@@ -22,10 +41,19 @@ getPeptideProteinWeights = function(feature_data,
                                         cols, protein_cols, psms_cols)
 
     # TODO: move below to another function?
-    if (norm == "p_norm") {
-        obj = CVXR::p_norm(design_matrix %*% params_full - y, norm_parameter)
+    if (weights_penalty) {
+        penalty = 0.1 * sum(multiplier * (params_full - equal_weights_vals) ^ 2)
+        if (norm == "p_norm") {
+            obj = CVXR::p_norm(design_matrix %*% params_full - y, norm_parameter) + penalty
+        } else {
+            obj = sum(CVXR::huber(design_matrix %*% params_full - y, norm_parameter)) + penalty
+        }
     } else {
-        obj = sum(CVXR::huber(design_matrix %*% params_full - y, norm_parameter))
+        if (norm == "p_norm") {
+            obj = CVXR::p_norm(design_matrix %*% params_full - y, norm_parameter)
+        } else {
+            obj = sum(CVXR::huber(design_matrix %*% params_full - y, norm_parameter))
+        }
     }
 
     prob_con = CVXR::Problem(CVXR::Minimize(obj), constraints)

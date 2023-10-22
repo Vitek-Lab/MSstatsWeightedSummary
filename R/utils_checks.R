@@ -30,6 +30,7 @@ checkDataCorrectness = function(feature_data) {
             feature_data = data.table::rbindlist(by_run)
             feature_data[, Cluster := paste(Cluster, Run, sep = "__")]
         }
+        # feature_data = imputeTMT(feature_data)
         feature_data
     }
 }

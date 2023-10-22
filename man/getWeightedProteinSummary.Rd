@@ -11,6 +11,9 @@ getWeightedProteinSummary(
   weights_mode = "contributions",
   tolerance = 0.1,
   max_iter = 10,
+  initial_summary = "unique",
+  weights_penalty = FALSE,
+  weights_penalty_param = 0.1,
   save_weights_history = FALSE,
   save_convergence_history = FALSE
 )
@@ -28,6 +31,13 @@ getWeightedProteinSummary(
 \item{tolerance}{tolerance to indicate weights convergence}
 
 \item{max_iter}{maximum number of iteration of the procedure}
+
+\item{initial_summary}{"unique", "flat" or "flat unique"}
+
+\item{weights_penalty}{if TRUE, weights will be penalized for deviations from equal value
+for all proteins matching to a given PSM}
+
+\item{weights_penalty_param}{penalty parameter}
 
 \item{save_weights_history}{logical, if TRUE, weights from all iterations will
 be returned}

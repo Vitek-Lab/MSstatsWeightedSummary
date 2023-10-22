@@ -18,14 +18,16 @@ summarizeProteinsClusterSingleRun = function(feature_data, weights,
 
     if (!use_shared) {
         feature_data[, IsUnique := data.table::uniqueN(ProteinName) == 1, by = "PSM"]
-        feature_data[, HasUnique := any(IsUnique), by = "ProteinName"]
-        feature_data = feature_data[(IsUnique) | !(HasUnique)]
+        feature_data = feature_data[(IsUnique)]
+        feature_data[, Weight := 1]
         feature_data = unique(feature_data)
     }
     design = getProteinSummaryDesign(feature_data)
     design_matrix = design[["matrix"]]
     y = design[["response"]]
-    optimization_problem = getProteinsOptimProblem(design_matrix, y,
+    is_non_missing = !is.na(y)
+    optimization_problem = getProteinsOptimProblem(design_matrix[is_non_missing, ],
+                                                   y[is_non_missing],
                                                    norm, norm_parameter,
                                                    proteins, psms)
     solution = CVXR::solve(optimization_problem)
@@ -45,10 +47,14 @@ summarizeProteinsClusterSingleRun = function(feature_data, weights,
 getProteinSummaryDesign = function(feature_data) {
     cols = c("PSM", "Channel", "log2IntensityNormalized")
 
-    protein_intercepts = unique(feature_data[, .(ProteinName, PSM, Channel, Weight)])
+    # protein_intercepts = unique(feature_data[, .(ProteinName, PSM, Channel, Weight)])
+    # protein_intercepts = data.table::dcast(protein_intercepts,
+    #                                        PSM + Channel ~ ProteinName,
+    #                                        value.var = "Weight", fill = 0)
+    protein_intercepts = unique(feature_data[, .(ProteinName, PSM, Channel, Present = 1)])
     protein_intercepts = data.table::dcast(protein_intercepts,
                                            PSM + Channel ~ ProteinName,
-                                           value.var = "Weight", fill = 0)
+                                           value.var = "Present", fill = 0)
 
     feature_intercepts = unique(feature_data[, .(PSM, Channel, Present = 1)])
     feature_intercepts = data.table::dcast(feature_intercepts,
@@ -68,7 +74,6 @@ getProteinSummaryDesign = function(feature_data) {
     dm = merge(dm, protein_intercepts, by = c("PSM", "Channel"))
     dm[["intercept"]] = 1
 
-    proteins = unique(feature_data[["ProteinName"]])
     y = dm[["log2IntensityNormalized"]]
     dm = dm[, !(colnames(dm) %in% cols), with = FALSE]
     list(matrix = as.matrix(dm),

@@ -7,7 +7,8 @@
 createPeptideProteinGraph(
   quantification_data,
   protein_column = "ProteinName",
-  peptide_column = "PeptideSequence"
+  peptide_column = "PeptideSequence",
+  by_run = FALSE
 )
 }
 \arguments{

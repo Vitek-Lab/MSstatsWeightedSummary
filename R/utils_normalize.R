@@ -50,5 +50,5 @@ normalizePeptides = function(feature_data) {
     feature_data[, Intensity := 2 ^ log2IntensityNormalized]
     feature_data[, Diff := NULL]
 
-    feature_data[, !(colnames(input) == "MedianLog2Int"), with = FALSE]
+    feature_data[, !(colnames(feature_data) == "MedianLog2Int"), with = FALSE]
 }
