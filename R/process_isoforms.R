@@ -15,7 +15,10 @@ processIsoforms = function(quantification_data, remove_single_shared = TRUE,
 
     if (merge_identical) {
         pp_graph = createPeptideProteinGraph(quantification_data)
-        quantification_data = addClusterMembership(quantification_data, pp_graph)
+        quantification_data[, Cluster := NULL]
+        quantification_data = addClusterMembership(quantification_data,
+                                                   pp_graph)
+        quantification_data[, Cluster := Cluster + max(unique_only$Cluster)]
         data_by_cluster = split(quantification_data, quantification_data[["Cluster"]])
         processed_clusters = lapply(data_by_cluster, mergeIdenticalProteins)
         processed_clusters = data.table::rbindlist(processed_clusters)
