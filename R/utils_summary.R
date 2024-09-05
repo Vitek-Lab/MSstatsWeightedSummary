@@ -155,8 +155,12 @@ processProteinOptimSolution = function(solution, optimization_problem,
         result[, Intercept := baseline]
         result[, Abundance := ChannelValue + protein_intercept + Intercept]
         result[, CenteredAbundance := ChannelValue + protein_intercept]
-        result[, list(ProteinName, Channel, CenteredAbundance, Abundance)]
+        result[, list(ProteinName, Channel, CenteredAbundance, Abundance, Converged = TRUE)]
     } else {
-        # TODO: implement something reasonable here
+        data.table::data.table(ProteinName = unique(feature_data[["ProteinName"]]),
+                               Channel = unique(feature_data[["Channel"]]),
+                               CenteredAbundance = NA_real_,
+                               Abundance = NA_real_,
+                               Converged = FALSE)
     }
 }
