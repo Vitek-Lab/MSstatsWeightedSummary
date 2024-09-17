@@ -13,6 +13,8 @@ devtools::install_github("Vitek-Lab/MSstatsWeightedSummary")
 
 #### Getting help:
 
+[Vignette online](https://vitek-lab.github.io/MSstatsWeightedSummary/articles/shared_workflow.html)
+
 ```
 ?getWeightedProteinSummary
 ?normalizeSharedPeptides
