@@ -51,6 +51,10 @@ getProteinSummaryDesign = function(feature_data) {
     protein_intercepts = data.table::dcast(protein_intercepts,
                                            PSM + Channel ~ ProteinName,
                                            value.var = "Weight", fill = 0)
+    # protein_intercepts = unique(feature_data[, .(ProteinName, PSM, Channel, Present = 1)])
+    # protein_intercepts = data.table::dcast(protein_intercepts,
+    #                                        PSM + Channel ~ ProteinName,
+    #                                        value.var = "Present", fill = 0)
 
     feature_intercepts = unique(feature_data[, .(PSM, Channel, Present = 1)])
     feature_intercepts = data.table::dcast(feature_intercepts,

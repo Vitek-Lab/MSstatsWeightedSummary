@@ -82,7 +82,7 @@ There are three proteins in this data set. Each protein has one unique peptide a
 ggplot(simulated_dataset, aes(x = reorder(Channel, as.numeric(as.character(Channel))),
                               y = log2IntensityNormalized, group = PSM,
                               color = ifelse(IsUnique, "unique", "shared"))) +
-    geom_line(size = 1.2) +
+    geom_line(linewidth = 1.2) +
     facet_wrap(~ProteinName) +
     theme_bw() +
     theme(legend.position = "bottom") +
@@ -174,7 +174,7 @@ convergenceSummary(summary)
 Summary can be plotted for a given cluster or set of proteins using `plotSummary` function.
 
 ```{r }
-plotSummary(summary, cluster = 1)
+plotSummary(summary, cluster = "1__1_1")
 ```
 
 It is also possible to obtain protein cluster information via `proteinClusters` function.
