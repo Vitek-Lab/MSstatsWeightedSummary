@@ -5,7 +5,7 @@ Version: 0.99.6
 Authors@R: c(person("Mateusz", "Staniak", email = "mtst@mstaniak.pl", role = c("aut", "cre")))
 Description: Protein-level summarization of feature (PSM)-level data is an important step
     in proteomics data analysis methods, including the MSstats workflow. MSstats and MSstatsTMT
-    packages summarize features based on unique peptides. This package provides implements 
+    packages summarize features based on unique peptides. This package implements 
     a statistical method to jointly summarize clusters of proteins that share features 
     using weights specific to peptide-protein matches.
 License: GPL (>= 3)
