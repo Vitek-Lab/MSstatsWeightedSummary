@@ -1,8 +1,12 @@
 Package: MSstatsWeightedSummary
 Type: Package
 Title: Weighted Protein-Level Summarization for Protein Clusters
-Version: 0.99.6
-Authors@R: c(person("Mateusz", "Staniak", email = "mtst@mstaniak.pl", role = c("aut", "cre")))
+Version: 0.99.7
+Authors@R: c(
+    person("Mateusz", "Staniak", email = "mtst@mstaniak.pl", role = c("aut", "cre"))
+    person("Ting", "Huang", email = "thuang0703@gmail.com", role = "ctb"),
+    person("Małgorzata", "Bogdan", email = "malgorzata.bogdan@uwr.edu.pl", role = "aut"),
+    person("Olga", "Vitek", email = "o.vitek@northeastern.edu", role = "aut"))
 Description: Protein-level summarization of feature (PSM)-level data is an important step
     in proteomics data analysis methods, including the MSstats workflow. MSstats and MSstatsTMT
     packages summarize features based on unique peptides. This package implements 
@@ -30,5 +34,6 @@ Suggests:
     knitr,
     rmarkdown
 VignetteBuilder: knitr
+biocViews: MassSpectrometry, Proteomics, Software
 Depends: 
     R (>= 2.10)
