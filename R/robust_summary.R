@@ -93,9 +93,9 @@ getClusterSummaries = function(cluster_input,
         cluster_input,
         function(single_cluster) {
             input_by_run = split(single_cluster, single_cluster[, Run])
-            peptide_protein_dt = unique(single_cluster[, .(ProteinName, PSM, Run)])
 
             output_by_run = lapply(input_by_run, function(x) {
+                peptide_protein_dt = unique(x[, .(ProteinName, PSM, Run)])
                 getWeightedSummarySingleRun(x, peptide_protein_dt,
                                             norm, norm_parameter,
                                             weights_mode,
