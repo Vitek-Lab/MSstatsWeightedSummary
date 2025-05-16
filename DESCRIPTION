@@ -3,7 +3,7 @@ Type: Package
 Title: Weighted Protein-Level Summarization for Protein Clusters
 Version: 0.99.15
 Authors@R: c(
-    person("Mateusz", "Staniak", email = "mtst@mstaniak.pl", role = c("aut", "cre"))
+    person("Mateusz", "Staniak", email = "mtst@mstaniak.pl", role = c("aut", "cre")),
     person("Ting", "Huang", email = "thuang0703@gmail.com", role = "ctb"),
     person("Małgorzata", "Bogdan", email = "malgorzata.bogdan@uwr.edu.pl", role = "aut"),
     person("Olga", "Vitek", email = "o.vitek@northeastern.edu", role = "aut"))
