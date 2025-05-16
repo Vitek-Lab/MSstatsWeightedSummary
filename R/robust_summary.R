@@ -93,6 +93,7 @@ getClusterSummaries = function(cluster_input,
         cluster_input,
         function(single_cluster) {
             input_by_run = split(single_cluster, single_cluster[, Run])
+            input_by_run = input_by_run[sapply(input_by_run, nrow) > 0]
             peptide_protein_dt_complete = unique(single_cluster[, .(ProteinName, PSM, Run)])
             output_by_run = lapply(input_by_run, function(x) {
                 peptide_protein_dt = unique(x[, .(ProteinName, PSM, Run)])
@@ -132,6 +133,7 @@ getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
     input_loop = feature_data[, .(Run, ProteinName, PSM,
                                   Channel,
                                   log2IntensityNormalized)]
+    run = unique(input_loop[, Run])
     num_weights = data.table::uniqueN(peptide_protein_dt)
     current_weights = rep(1, num_weights)
     previous_weights = rep(0, num_weights)
@@ -150,6 +152,7 @@ getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
                                            norm_parameter, weights_mode,
                                            weights_penalty, weights_penalty_param)
         weights_list[[iter]] = weights
+        weights_list[[iter]]$Run = run
 
         input_loop = merge(input_loop,
                            unique(weights[, .(PSM, ProteinName)]),

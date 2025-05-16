@@ -270,8 +270,8 @@ getWeightsSummary = function(summary_per_cluster) {
                            weights = weights[Total > 0]
                            weights[, Total := NULL]
                            weights
-                       }))
-               }))
+                       }), fill = TRUE, use.names = TRUE)
+               }), fill = TRUE, use.names = TRUE)
     weights[, IsUnique := data.table::uniqueN(ProteinName) == 1,
             by = c("PSM", "Run")]
     weights
@@ -295,18 +295,17 @@ getWeightsHistory = function(summary_per_cluster, save_weights_history) {
                                            function(x) {
                                                merge(x,
                                                      peptide_protein_dt,
-                                                     by = c("ProteinName", "PSM"),
+                                                     by = c("ProteinName", "PSM", "Run"),
                                                      all.x = T, all.y = T)
                                            })
                             iters = lapply(seq_along(iters),
                                            function(i) cbind(iters[[i]],
                                                              iter = i))
-                            iters = data.table::rbindlist(iters)
-                            iters[, Run := run_id]
+                            iters = data.table::rbindlist(iters, fill = TRUE, use.names = TRUE)
                             iters[, Weight := ifelse(is.na(Weight), 0, Weight)]
                             iters
-                        }))
-                })
+                        }), fill = TRUE, use.names = TRUE)
+                }), fill = TRUE, use.names = TRUE
         )
         weights_history[, IsUnique := data.table::uniqueN(ProteinName) == 1,
                         by = c("PSM", "Run")]
@@ -335,7 +334,8 @@ getConvergenceSummary = function(summary_per_cluster, tolerance) {
                                                     Tolerance = tolerance,
                                                     Converged = history[length(history)] < tolerance)
                                            })
-                histories = data.table::rbindlist(histories_per_run)
+                histories = data.table::rbindlist(histories_per_run, fill = TRUE,
+                                                  use.names = TRUE)
                 histories[, Cluster := cluster_summary_id]
                 histories[, list(Cluster, Run, NumIterations,
                                  FinalDiffValue, tolerance, Converged)]
