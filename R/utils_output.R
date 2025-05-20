@@ -323,16 +323,14 @@ getConvergenceSummary = function(summary_per_cluster, tolerance) {
         lapply(
             names(summary_per_cluster),
             function(cluster_summary_id) {
-                cluster_summary = summary_per_cluster[[cluster_summary_id]]
-                convergence_histories = cluster_summary[["convergence_history"]]
-                histories_per_run = lapply(names(convergence_histories),
+                histories_per_run = lapply(names(summary_per_cluster[[cluster_summary_id]][["convergence_history"]]),
                                            function(run_id) {
-                                               history = convergence_histories[[run_id]]
-                                               list(Run = run_id,
-                                                    NumIterations = length(history),
-                                                    FinalDiffValue = history[length(history)],
+                                               history = summary_per_cluster[[cluster_summary_id]][["convergence_history"]][[run_id]]
+                                               list(Run = run_id, NumIterations = length(summary_per_cluster[[cluster_summary_id]][["alpha_history"]][[run_id]]),
+                                                    FinalDiffValue = ifelse(length(history[length(history)]) == 0, 0.0, history[length(history)]),
                                                     Tolerance = tolerance,
-                                                    Converged = history[length(history)] < tolerance)
+                                                    Converged = ifelse(length(history[length(history)]) == 0, TRUE, history[length(history)] <
+                                                                           tolerance))
                                            })
                 histories = data.table::rbindlist(histories_per_run, fill = TRUE,
                                                   use.names = TRUE)
