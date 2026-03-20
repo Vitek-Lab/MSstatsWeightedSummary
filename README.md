@@ -1,5 +1,7 @@
 # MSstatsWeightedSummary: Weighted Protein-Level Summarization for Protein Clusters
 
+Protein-level summarization of feature (PSM)-level data is an important step in proteomics data analysis methods, including the MSstats workflow. MSstats and MSstatsTMT packages summarize features based on unique peptides. This package implements a statistical method to jointly summarize clusters of proteins that share features using weights specific to peptide-protein matches.
+
 #### Installation:
 
 
@@ -34,4 +36,9 @@ vignette(package = "MSstatsWeightedSummary")
     
 #### How to cite
 
-TBA.
+This package implements a statistical model introduced in the article [Relative quantification of proteins and post-translational modifications in proteomic experiments with shared peptides: a weight-based approach](https://doi.org/10.1093/bioinformatics/btaf046). 
+The bibtex entry can be found by calling:
+
+```
+citation(package = "MSstatsWeightedSummary")
+```

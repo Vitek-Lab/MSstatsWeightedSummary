@@ -1,0 +1,53 @@
+#' MSstatsWeightedSummary: Weighted Protein-Level Summarization for Protein Clusters
+#'
+#' @description
+#' Protein-level summarization of feature (PSM)-level data is an important step in proteomics data analysis methods,
+#' including the MSstats workflow. MSstats and MSstatsTMT packages summarize features based on unique peptides.
+#' This package implements a statistical method to jointly summarize clusters of proteins that share features
+#' using weights specific to peptide-protein matches.
+#'
+#' @section Main Functions:
+#'
+#' **Preprocessing:**
+#' \itemize{
+#'   \item \code{\link{createPeptideProteinGraph}}: creating a graph that represents peptide-protein matches,
+#'   \item \code{\link{normalizeSharedPeptides}}: normalization of feature-level data with shared peptides.
+#' }
+#'
+#' **Protein summarization:**
+#' \itemize{
+#'   \item \code{\link{getWeightedProteinSummary}}: joint estimation of protein-level summaries using both unique and shared peptides.
+#' }
+#'
+#' **Utility functions and diagnostics:**
+#' \itemize{
+#'   \item \code{\link{proteinData}}: table of estimated protein-level summaries,
+#'   \item \code{\link{featureWeights}}: estimated weights for each peptide-protein match,
+#'   \item \code{\link{convergenceSummary}}: information about the convergence of model-fitting algorithm,
+#'   \item \code{\link{plotSummary}}: profile plots that include both peptide-level data and protein-level summaries,
+#'   \item \code{\link{makeMSstatsTMTInput}}: creating an MSstatsTMT-compatible input for the `groupComparisonTMT` function.
+#' }
+#'
+#' @section Data Format:
+#'
+#' Quantitative data should be stored in the MSstatsTMT format. Additionally, utility functions provided by this package
+#' add an additional column `Cluster` to this format to indicate which sets of proteins are identified by a common
+#' set of peptides.
+#'
+#'
+#' @seealso
+#' Useful links:
+#' \itemize{
+#'   \item MSstatsTMT: \url{http://msstats.org/msstatstmt/}
+#'   \item MSstats google group for bug reports and questions: \url{https://groups.google.com/forum/#!forum/msstats}
+#' }
+#'
+#' @docType package
+#' @name MSstatsWeightedSummary-package
+#' @aliases MSstatsWeightedSummary
+#' @keywords internal
+"_PACKAGE"
+
+## usethis namespace: start
+## usethis namespace: end
+NULL

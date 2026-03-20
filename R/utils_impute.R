@@ -1,4 +1,5 @@
 #' @keywords internal
+#' @importFrom stats quantile
 imputeTMT = function(feature_data) {
     censored_cutoff = 0.999
 
@@ -50,6 +51,7 @@ imputeTMT = function(feature_data) {
 
 #' @keywords internal
 #' @importFrom survival Surv
+#' @importFrom stats as.formula predict
 imputeSingleRunCluster = function(feature_data) {
     if (any(is.na(feature_data$log2IntensityNormalized))) {
         feature_data[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]

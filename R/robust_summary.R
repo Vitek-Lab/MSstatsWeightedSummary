@@ -42,7 +42,7 @@
 #' }
 #' Elements of this object can be accessed with functions
 #' \code{\link{featureData}}, \code{\link{proteinData}},
-#' \code{\link{featurWeights}}, \code{\link{convergenceSummary}},
+#' \code{\link{featureWeights}}, \code{\link{convergenceSummary}},
 #' \code{\link{weightsHistory}}, \code{\link{convergenceHistory}}
 #'
 #' For statistical details about the method, please consult the vignette.

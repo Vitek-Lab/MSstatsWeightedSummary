@@ -35,6 +35,7 @@ normalizeSharedPeptides = function(feature_data) {
 #' @inheritParams getWeightedProteinSummary
 #' @return data.table
 #' @keywords internal
+#' @importFrom stats median
 normalizePeptides = function(feature_data) {
     log2Intensity = Intensity = Run = Channel = NULL
     MedianLog2Int = Diff = NULL

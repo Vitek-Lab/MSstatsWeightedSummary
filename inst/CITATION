@@ -1,0 +1,11 @@
+bibentry(
+  bibtype  = "Article",
+  title    = "Relative quantification of proteins and post-translational modifications in proteomic experiments with shared peptides: a weight-based approach",
+  author   = "Staniak, Mateusz, and Huang, Ting, and Figueroa-Navedo, Amanda M, and Kohler, Devon, and Choi, Meena, and Hinkle, Trent, and Kleinheinz, Tracy, and Blake, Robert, and Rose, Christopher M, and Xu, Yingrong, and Jean Beltran, Pierre M, and Xue, Liang, and Bogdan, Ma{\l}gorzata, and Vitek, Olga",
+  journal  = "Bioinformatics",
+  year     = "2025",
+  volume   = "41",
+  number   = "3",
+  pages    = "btaf046",
+  doi      = "10.1093/bioinformatics/btaf046"
+)

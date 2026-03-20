@@ -218,6 +218,7 @@ setMethod("makeMSstatsTMTInput", "MSstatsWeightedSummary",
 #' @param summary_per_cluster output of getClusterSummaries
 #' @param annotation output of getAnnotation
 #' @keywords internal
+#' @importFrom methods new
 processSummarizationOutput = function(summary_per_cluster,
                                       feature_data,
                                       annotation,
