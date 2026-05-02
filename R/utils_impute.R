@@ -16,7 +16,9 @@ imputeTMT = function(feature_data) {
                                    by = c("Run", "Cluster")]
         quantile_stats[, cutoff_lower := q25 - mult]
 
-        feature_data = merge(feature_data, quantile_stats[, .(Run, Cluster, cutoff_lower)], by = c("Run", "Cluster"))
+        feature_data = merge(feature_data,
+                             quantile_stats[, .(Run, Cluster, cutoff_lower)],
+                             by = c("Run", "Cluster"), sort = FALSE)
         feature_data[, censored := (!is.na(log2IntensityNormalized) & log2IntensityNormalized < cutoff_lower) | is.na(log2IntensityNormalized)]
 
         feature_data[, nonmissing := !is.na(log2IntensityNormalized)]
@@ -74,7 +76,7 @@ imputeSingleRunCluster = function(feature_data) {
         }
 
         feature_data = merge(feature_data, unique(feature_wide[, .(PSM, Channel, Imputed)]),
-                             by = c("PSM", "Channel"), all.x = T)
+                             by = c("PSM", "Channel"), all.x = T, sort = FALSE)
         feature_data[, log2IntensityNormalized := ifelse(is.na(log2IntensityNormalized), Imputed, log2IntensityNormalized)]
     }
     feature_data

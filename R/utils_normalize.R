@@ -25,8 +25,8 @@ normalizeSharedPeptides = function(feature_data) {
                                     NA, Intensity)]
     }
     output = merge(to_normalize, pp_match, by = "PeptideSequence",
-                   all.x = TRUE, allow.cartesian = TRUE)
-    output = merge(output, annotation, by = c("Run", "Channel"))
+                   all.x = TRUE, allow.cartesian = TRUE, sort = FALSE)
+    output = merge(output, annotation, by = c("Run", "Channel"), sort = FALSE)
     output
 }
 

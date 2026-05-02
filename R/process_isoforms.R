@@ -24,7 +24,7 @@ processIsoforms = function(quantification_data, remove_single_shared = TRUE,
         processed_clusters = data.table::rbindlist(processed_clusters)
         setnames(quantification_data, "ProteinName", "ProteinNameOriginal")
         quantification_data = merge(quantification_data, processed_clusters,
-                                    by = "ProteinNameOriginal")
+                                    by = "ProteinNameOriginal", sort = FALSE)
         quantification_data = unique(quantification_data[, colnames(quantification_data) != "ProteinNameOriginal", with = FALSE])
         quantification_data = getUniquenessInfo(quantification_data)
     }
@@ -49,7 +49,8 @@ processIsoforms = function(quantification_data, remove_single_shared = TRUE,
             # quantification_data = quantification_data[(HasUnique) | ProteinName %in% subset_counts[, ProteinName]]
             # can be done with merge?
             quantification_data[, ProteinName := NULL]
-            quantification_data = merge(quantificatioN_data, subset_counts, )
+            quantification_data = merge(quantificatioN_data, subset_counts,
+                                        sort = FALSE)
             quantification_data = getUniquenessInfo(quantification_data)
         }
     }

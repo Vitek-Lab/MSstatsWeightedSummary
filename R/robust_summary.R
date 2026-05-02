@@ -109,15 +109,26 @@ getClusterSummaries = function(cluster_input,
             summarized_output = data.table::rbindlist(
                 lapply(output_by_run,
                        function(x) x[["summary"]]))
+            predicted_profiles = data.table::rbindlist(
+                lapply(output_by_run, function(x) x[["estimated_profiles"]])
+            )
             alphas_list = lapply(output_by_run,
                                  function(x) x[["alpha_history"]])
             alpha_diffs = lapply(
                 output_by_run, function(x) x[["convergence_history"]])
+            final_criterion_vals = data.table::rbindlist(lapply(
+                output_by_run, function(x) {
+                    list(Run = unique(x[["summary"]][["Run"]]),
+                         Criterion = x[["final_criterion"]])
+                }
+            ))
 
             list(summary = summarized_output,
                  pp_dt = peptide_protein_dt_complete,
+                 estimated_profiles = predicted_profiles,
                  alpha_history = alphas_list,
-                 convergence_history = alpha_diffs)
+                 convergence_history = alpha_diffs,
+                 final_criterion_values = final_criterion_vals)
         })
 }
 
@@ -143,7 +154,7 @@ getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
     input_loop = merge(input_loop,
                        initial_summary[, list(Run, ProteinName, Channel,
                                               Abundance, CenteredAbundance)],
-                       by = c('Run', "ProteinName", "Channel"))
+                       by = c('Run', "ProteinName", "Channel"), sort = FALSE)
     iter = 1
     weights_diffs = vector("numeric", max_iter)
     while (sum(abs(current_weights - previous_weights)) > tolerance) {
@@ -156,16 +167,18 @@ getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
 
         input_loop = merge(input_loop,
                            unique(weights[, .(PSM, ProteinName)]),
-                           by = c("ProteinName", "PSM"))
+                           by = c("ProteinName", "PSM"), sort = FALSE)
         # in case some weights were eliminated
 
         new_abundances = summarizeProteinsClusterSingleRun(input_loop,
                                                            weights,
                                                            norm, norm_parameter,
                                                            TRUE)
+        protein_summary = new_abundances[["ProteinSummary"]]
         input_loop = merge(input_loop[, list(ProteinName, PSM, Channel,
                                              log2IntensityNormalized)],
-                           new_abundances, by = c("ProteinName", "Channel"))
+                           protein_summary, by = c("ProteinName", "Channel"),
+                           sort = FALSE)
         current_weights = getCurrentWeights(weights, peptide_protein_dt)
 
         if (iter >= max_iter) {
@@ -176,12 +189,14 @@ getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
         }
     }
 
-    summarized_output = new_abundances[, list(ProteinName, Run, Channel, Abundance)]
+    summarized_output = new_abundances[["ProteinSummary"]][, list(ProteinName, Run, Channel, Abundance)]
     weights_diffs = weights_diffs[weights_diffs > 0]
     weights_list = weights_list[sapply(weights_list, function(x) !is.null(x))]
     list(summary = summarized_output,
          alpha_history = weights_list,
-         convergence_history = weights_diffs)
+         convergence_history = weights_diffs,
+         estimated_profiles = cbind(Run = run, new_abundances[["PredictedProfiles"]]),
+         final_criterion = new_abundances[["Criterion"]])
 }
 
 getInitialSummary = function(input_loop,
@@ -189,16 +204,17 @@ getInitialSummary = function(input_loop,
                              initial_summary) {
     if (initial_summary == "unique") {
         initial_weights = unique(input_loop[, .(ProteinName, PSM, Weight = 1)])
-        summarizeProteinsClusterSingleRun(input_loop,
+        summarized = summarizeProteinsClusterSingleRun(input_loop,
                                           initial_weights,
                                           norm, norm_parameter,
                                           use_shared = FALSE)
+        summarized[["ProteinSummary"]]
     } else if (initial_summary == "flat") {
         means = input_loop[, .(Abundance = mean(log2IntensityNormalized,
                                                 na.rm = TRUE)),
                            by = "ProteinName"]
         merge(unique(input_loop[, .(ProteinName, Run, Channel, CenteredAbundance = 0)]),
-              means, by = "ProteinName")
+              means, by = "ProteinName", sort = FALSE)
     } else {
         input_loop[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
         prot_has_unique = input_loop[(IsUnique), unique(ProteinName)]
@@ -210,6 +226,7 @@ getInitialSummary = function(input_loop,
                                                            initial_weights,
                                                            norm, norm_parameter,
                                                            use_shared = FALSE)
+        initial_unique = initial_unique[["ProteinSummary"]]
         means = input_loop[!(ProteinName %in% prot_has_unique),
                            .(Abundance = mean(log2IntensityNormalized,
                                               na.rm = TRUE)),
@@ -217,10 +234,9 @@ getInitialSummary = function(input_loop,
         initial_no_unique = merge(unique(input_loop[, .(ProteinName, Run,
                                                         Channel,
                                                         CenteredAbundance = 0)]),
-                                  means, by = "ProteinName")
+                                  means, by = "ProteinName", sort = FALSE)
         rbind(initial_unique, initial_no_unique)
     }
-
 }
 
 
@@ -231,6 +247,7 @@ getInitialSummary = function(input_loop,
 getCurrentWeights = function(weights, peptide_protein_dt) {
     weights = merge(weights, peptide_protein_dt,
                     all.x = TRUE, all.y = TRUE,
+                    sort = FALSE,
                     by = c("ProteinName", "PSM"))
     weights[, Weight := ifelse(is.na(Weight), 0, Weight)]
     weights[order(PSM, ProteinName)][, Weight]

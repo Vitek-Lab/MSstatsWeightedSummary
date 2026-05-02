@@ -1,3 +1,13 @@
+#' Check if data is label-free or TMT
+#' @keywords internal
+checkExperimentType = function(feature_data) {
+    if (is.element("Channel", colnames(feature_data))) {
+        "TMT"
+    } else {
+        "LF"
+    }
+}
+
 #' Check if data is in MSstatsTMT format
 #' @keywords internal
 checkDataCorrectness = function(feature_data) {

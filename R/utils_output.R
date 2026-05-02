@@ -14,7 +14,9 @@ setClass("MSstatsWeightedSummary",
          slots = c(FeatureLevelData = "data.table",
                    ProteinLevelData = "data.table",
                    Weights = "data.table",
+                   FittedProfiles = "data.table",
                    ConvergenceSummary = "data.table",
+                   FinalCriterionValues = "data.table",
                    WeightsHistory = "dtOrNULL",
                    ConvergenceHistory = "dtOrNULL"))
 
@@ -226,11 +228,15 @@ processSummarizationOutput = function(summary_per_cluster,
                                       tolerance) {
     summary = data.table::rbindlist(lapply(summary_per_cluster,
                                            function(x) x[["summary"]]))
-    summary = merge(summary, annotation, by = c("Run", "Channel"))
+    summary = merge(summary, annotation, by = c("Run", "Channel"), sort = FALSE)
     data.table::setnames(summary, "ProteinName", "Protein")
+
+    fitted_profiles = getAllFittedProfiles(summary_per_cluster)
+
     weights_summary = getWeightsSummary(summary_per_cluster)
     weights_history = getWeightsHistory(summary_per_cluster,
                                         save_weights_history)
+    criteria = getFinalCriteria(summary_per_cluster)
 
     convergence_summary = getConvergenceSummary(summary_per_cluster,
                                                 tolerance)
@@ -242,7 +248,9 @@ processSummarizationOutput = function(summary_per_cluster,
         FeatureLevelData = feature_data,
         ProteinLevelData = summary,
         Weights = weights_summary[order(Run, PSM)],
+        FittedProfiles = fitted_profiles,
         ConvergenceSummary = convergence_summary,
+        FinalCriterionValues = criteria,
         WeightsHistory = weights_history,
         ConvergenceHistory = convergence_history)
 }
@@ -263,7 +271,7 @@ getWeightsSummary = function(summary_per_cluster) {
                            weights[, Run := run_id]
                            weights = merge(weights, peptide_protein_dt,
                                            by = c("ProteinName", "PSM", "Run"),
-                                           all.x = TRUE, all.y = TRUE)
+                                           all.x = TRUE, all.y = TRUE, sort = FALSE)
                            weights[, Weight := ifelse(is.na(Weight), 0, Weight)]
                            weights[, Total := sum(Weight),
                                    by = c("ProteinName", "Run")]
@@ -296,7 +304,7 @@ getWeightsHistory = function(summary_per_cluster, save_weights_history) {
                                                merge(x,
                                                      peptide_protein_dt,
                                                      by = c("ProteinName", "PSM", "Run"),
-                                                     all.x = T, all.y = T)
+                                                     all.x = T, all.y = T, sort = FALSE)
                                            })
                             iters = lapply(seq_along(iters),
                                            function(i) cbind(iters[[i]],
@@ -374,4 +382,27 @@ getConvergenceHistory = function(summary_per_cluster,
     } else {
         NULL
     }
+}
+
+getFinalCriteria = function(summary_per_cluster) {
+    data.table::rbindlist(lapply(names(summary_per_cluster), function(cluster_id) {
+        run_summaries = summary_per_cluster[[cluster_id]]
+        cbind(Cluster = cluster_id,
+              FinalCriterion = run_summaries[["final_criterion_values"]])
+    }))
+}
+
+getAllFittedProfiles = function(summary_per_cluster) {
+    data.table::rbindlist(lapply(names(summary_per_cluster), function(cluster_id) {
+        run_summaries = summary_per_cluster[[cluster_id]]
+        fitted_profiles = run_summaries[["estimated_profiles"]]
+        pp_dt = run_summaries[["pp_dt"]]
+        fitted_profiles = merge(fitted_profiles, pp_dt,
+                                by = c("Run", "PSM"),
+                                all.x = TRUE, all.y = TRUE, sort = FALSE,
+                                allow.cartesian = TRUE)
+        fitted_profiles[, Cluster := cluster_id]
+        fitted_profiles[, list(Cluster, ProteinName, PSM, Run,
+                               Channel, log2IntensityNormalized, Predicted)]
+    }))
 }

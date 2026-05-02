@@ -57,7 +57,8 @@ addClusterMembership = function(quantification_data, peptide_protein_graph,
                                                      all_unique_proteins))
                     }))
             }))
-        merge(quantification_data, membership, by = c("ProteinName", "Run"), all.x = TRUE)
+        merge(quantification_data, membership, by = c("ProteinName", "Run"),
+              all.x = TRUE, sort = FALSE)
     } else {
         all_unique_proteins = unique(quantification_data[[protein_column]])
         graph_decomposed = igraph::decompose.graph(peptide_protein_graph)
@@ -68,7 +69,8 @@ addClusterMembership = function(quantification_data, peptide_protein_graph,
                                        ProteinName = intersect(names(igraph::V(graph_decomposed[[cluster_id]])),
                                                                all_unique_proteins))
             }))
-        merge(quantification_data, membership, by = "ProteinName", all.x = TRUE)
+        merge(quantification_data, membership, by = "ProteinName",
+              all.x = TRUE, sort = FALSE)
     }
 }
 
@@ -101,7 +103,8 @@ getClusterStatistics = function(quantification_data, merge = FALSE) {
 
     if (merge) {
         statistics = merge(quantification_data, statistics,
-                           by = c("Cluster", "ProteinName", "PeptideSequence"))
+                           by = c("Cluster", "ProteinName", "PeptideSequence"),
+                           sort = FALSE)
     }
     statistics
 }

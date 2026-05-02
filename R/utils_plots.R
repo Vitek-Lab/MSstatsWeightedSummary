@@ -40,39 +40,6 @@ plotSummaryComparison = function(..., channel_order = NULL, feature_data = NULL)
 }
 
 
-#' Compare distribution of log2-intensities per channel with and without shared peptides
-#'
-#' @param input data.table
-#' @param plot_profiles if TRUE, feature profiles will be plotted
-#'
-#' @return ggplot
-#'
-#' @export
-#'
-plotDistributionComparison = function(input, plot_profiles = FALSE) {
-    full_distribution = input[, .(ProteinName, Run, PSM, Channel, log2IntensityNormalized,
-                                  IsUnique, Type = "All peptides")]
-    unique_distribution = input[(IsUnique), .(ProteinName, Run, PSM, Channel, log2IntensityNormalized,
-                                              IsUnique, Type = "Unique peptides")]
-    distributions = rbind(full_distribution, unique_distribution)
-    distributions$IsUnique = factor(as.character(distributions$IsUnique),
-                                    levels = c("TRUE", "FALSE"),
-                                    ordered = TRUE)
-    plot = ggplot(distributions, aes(x = Channel, y = log2IntensityNormalized,
-                                     fill = Type)) +
-        geom_boxplot()
-    if (plot_profiles) {
-        plot = plot +
-            geom_line(aes(x = Channel, y = log2IntensityNormalized,
-                          linetype = IsUnique, group = PSM),
-                      color = "grey", size = 0.8, alpha = 0.6)
-    }
-    plot +
-        facet_wrap(Run ~ ProteinName) +
-        theme_bw()
-}
-
-
 #' Plot feature profiles
 #'
 #' @param input data.table
@@ -88,7 +55,9 @@ plotProfiles = function(input) {
                       group = PSM, linetype = IsUnique)) +
         geom_point() +
         geom_line() +
+        scale_linetype_discrete(name = "peptide") +
         facet_wrap(Run ~ ProteinName) +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 270))
+        theme(axis.text.x = element_text(angle = 270),
+              legend.position = "bottom")
 }

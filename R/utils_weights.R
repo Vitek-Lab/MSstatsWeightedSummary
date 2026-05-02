@@ -57,8 +57,8 @@ getPeptideProteinWeights = function(feature_data,
     }
 
     prob_con = CVXR::Problem(CVXR::Minimize(obj), constraints)
-    sol_con = CVXR::solve(prob_con) # TODO: WHAT IF this throws an error?
-    alphas = as.vector(sol_con$getValue(CVXR::variables(prob_con)[[1]]))
+    sol_con = CVXR::psolve(prob_con) # TODO: WHAT IF this throws an error?
+    alphas = as.vector(CVXR::value(CVXR::variables(prob_con)[[1]]))
 
     result = data.table::data.table(
         ProteinName = protein_cols,
@@ -89,9 +89,9 @@ getWeightsDesign = function(feature_data) {
                                          fill = 0, sep = "__")
     wide = merge(
         merge(psms_intercept_tbl, intensities_tbl,
-              by = c("PSM", "Channel"), all.x = T, all.y = T),
+              by = c("PSM", "Channel"), all.x = T, all.y = T, sort = FALSE),
         psms_protein_tbl,
-        by = c("PSM", "Channel"), all.x = T, all.y = T
+        by = c("PSM", "Channel"), all.x = T, all.y = T, sort = FALSE
     )
     wide = data.table::as.data.table(wide)
 

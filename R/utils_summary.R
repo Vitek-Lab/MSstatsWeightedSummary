@@ -12,7 +12,7 @@ summarizeProteinsClusterSingleRun = function(feature_data, weights,
     run = unique(feature_data[, Run])
     feature_data = merge(feature_data[, list(ProteinName, PSM, Channel,
                                              log2IntensityNormalized)],
-                         weights, by = c("ProteinName", "PSM"))
+                         weights, by = c("ProteinName", "PSM"), sort = FALSE)
     proteins = unique(feature_data[["ProteinName"]])
     psms = unique(feature_data[["PSM"]])
 
@@ -30,15 +30,16 @@ summarizeProteinsClusterSingleRun = function(feature_data, weights,
                                                    y[is_non_missing],
                                                    norm, norm_parameter,
                                                    proteins, psms)
-    solution = CVXR::solve(optimization_problem)
+    solution = CVXR::psolve(optimization_problem)
 
     estimated_abundances = processProteinOptimSolution(solution,
                                                        optimization_problem,
                                                        feature_data,
                                                        design_matrix)
-    estimated_abundances[, Run := run]
-    estimated_abundances[, .(ProteinName, Run, Channel,
-                             CenteredAbundance, Abundance)]
+    estimated_abundances$ProteinSummary[, Run := run]
+    estimated_abundances$ProteinSummary = estimated_abundances$ProteinSummary[, .(ProteinName, Run, Channel,
+                                                                                  CenteredAbundance, Abundance)]
+    estimated_abundances
 }
 
 #' Get design matrix for protein-level summarization
@@ -69,9 +70,9 @@ getProteinSummaryDesign = function(feature_data) {
 
     intensities = unique(feature_data[, .(PSM, Channel, log2IntensityNormalized)])
 
-    dm = merge(intensities, channel_design, by = c("PSM", "Channel"))
-    dm = merge(dm, feature_intercepts, by = c("PSM", "Channel"))
-    dm = merge(dm, protein_intercepts, by = c("PSM", "Channel"))
+    dm = merge(intensities, channel_design, by = c("PSM", "Channel"), sort = FALSE)
+    dm = merge(dm, feature_intercepts, by = c("PSM", "Channel"), sort = FALSE)
+    dm = merge(dm, protein_intercepts, by = c("PSM", "Channel"), sort = FALSE)
     dm[["intercept"]] = 1
 
     y = dm[["log2IntensityNormalized"]]
@@ -132,9 +133,9 @@ processProteinOptimSolution = function(solution, optimization_problem,
     num_channels = data.table::uniqueN(feature_data[, Channel])
     num_proteins = data.table::uniqueN(feature_data[, ProteinName])
 
-    if (!(solution[["status"]] == "solver_error")) {
+    if (CVXR::status(optimization_problem) == "optimal") {
         param_names = colnames(design_matrix)
-        estimated = solution$getValue(CVXR::variables(optimization_problem)[[1]])
+        estimated = CVXR::value(CVXR::variables(optimization_problem)[[1]])
         baseline = estimated[param_names == "intercept"]
 
         is_prot = param_names %in% unique(feature_data[, ProteinName])
@@ -155,16 +156,26 @@ processProteinOptimSolution = function(solution, optimization_problem,
             ChannelValue = channels
         )
 
-        result = merge(channels_dt, protein_intercepts, by = "ProteinName")
+        result = merge(channels_dt, protein_intercepts, by = "ProteinName",
+                       sort = FALSE)
         result[, Intercept := baseline]
         result[, Abundance := ChannelValue + protein_intercept + Intercept]
         result[, CenteredAbundance := ChannelValue + protein_intercept]
-        result[, list(ProteinName, Channel, CenteredAbundance, Abundance, Converged = TRUE)]
+
+        profiles_comp = unique(feature_data[, .(PSM, Channel, log2IntensityNormalized)])
+        fitted_profiles = as.vector(design_matrix %*% estimated)
+        profiles_comp[["Predicted"]] = fitted_profiles
+
+        list(PredictedProfiles = profiles_comp,
+             ProteinSummary = result[, list(ProteinName, Channel, CenteredAbundance, Abundance, Converged = TRUE)],
+             Criterion = solution)
     } else {
-        data.table::data.table(ProteinName = unique(feature_data[["ProteinName"]]),
-                               Channel = unique(feature_data[["Channel"]]),
-                               CenteredAbundance = NA_real_,
-                               Abundance = NA_real_,
-                               Converged = FALSE)
+        list(PredictedProfiles = unique(feature_data[, .(PSM, Channel, log2IntensityNormalized, Predicted = NA_real_)]),
+             ProteinSummary = data.table::data.table(ProteinName = unique(feature_data[["ProteinName"]]),
+                                                     Channel = unique(feature_data[["Channel"]]),
+                                                     CenteredAbundance = NA_real_,
+                                                     Abundance = NA_real_,
+                                                     Converged = FALSE),
+             Criterion = NA_real_)
     }
 }
