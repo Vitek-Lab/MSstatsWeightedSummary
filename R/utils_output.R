@@ -135,6 +135,20 @@ setMethod("proteinClusters", "MSstatsWeightedSummary",
               cluster_data
           })
 
+#' Extract fitted PSM-level profiles from MSstatsWeightedSummary object
+#' @export
+setGeneric("fittedProfiles",
+           function(weighted_summary) standardGeneric("fittedProfiles"))
+#' Extract cluster information from MSstatsWeightedSummary object
+#' @param weighted_summary output of the getWeightedProteinSummary function
+#' @return data.table
+setMethod("fittedProfiles", "MSstatsWeightedSummary",
+          function(weighted_summary) {
+              fitted_profiles = weighted_summary@FittedProfiles
+              fitted_profiles
+          })
+
+
 #' Plot summary for a given cluster or proteins set
 #' @export
 #' @return ggplot2 object
