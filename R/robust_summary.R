@@ -58,8 +58,11 @@ getWeightedProteinSummary = function(feature_data,
                                      weights_penalty_param = 0.1,
                                      save_weights_history = FALSE,
                                      save_convergence_history = FALSE) {
-    feature_data = checkDataCorrectness(feature_data)
-    annotation = getAnnotation(feature_data)
+    experiment_type = checkExperimentType(feature_data)
+    feature_data = checkDataCorrectness(feature_data, experiment_type)
+    annotation = getAnnotation(feature_data, experiment_type)
+    lf_data = getLFDataPortion(feature_data, experiment_type)
+    feature_data = reshapeLFData(feature_data, experiment_type)
     cluster_input = getProteinsClusters(feature_data)
 
     summary_per_cluster = getClusterSummaries(cluster_input,
@@ -71,10 +74,12 @@ getWeightedProteinSummary = function(feature_data,
                                               weights_penalty_param)
     summaries = processSummarizationOutput(summary_per_cluster,
                                            feature_data,
+                                           lf_data,
                                            annotation,
                                            save_weights_history,
                                            save_convergence_history,
-                                           tolerance)
+                                           tolerance,
+                                           experiment_type)
     summaries
 }
 

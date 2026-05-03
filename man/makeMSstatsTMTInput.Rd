@@ -2,10 +2,10 @@
 % Please edit documentation in R/utils_output.R
 \name{makeMSstatsTMTInput}
 \alias{makeMSstatsTMTInput}
-\title{Create input for MSstatsTMT::groupComparison function}
+\title{Create input for MSstatsTMT::groupComparisonTMT function}
 \usage{
 makeMSstatsTMTInput(weighted_summary, msstatstmt_output = NULL)
 }
 \description{
-Create input for MSstatsTMT::groupComparison function
+Create input for MSstatsTMT::groupComparisonTMT function
 }

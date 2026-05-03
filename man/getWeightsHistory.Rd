@@ -4,7 +4,7 @@
 \alias{getWeightsHistory}
 \title{Get history of weights from all iterations}
 \usage{
-getWeightsHistory(summary_per_cluster, save_weights_history)
+getWeightsHistory(summary_per_cluster, save_weights_history, experiment_type)
 }
 \arguments{
 \item{summary_per_cluster}{output of getClusterSummaries}

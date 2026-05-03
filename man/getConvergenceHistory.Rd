@@ -4,7 +4,12 @@
 \alias{getConvergenceHistory}
 \title{Get details of convergence}
 \usage{
-getConvergenceHistory(summary_per_cluster, tolerance, save_convergence_history)
+getConvergenceHistory(
+  summary_per_cluster,
+  tolerance,
+  save_convergence_history,
+  experiment_type
+)
 }
 \arguments{
 \item{summary_per_cluster}{output of getClusterSummaries}

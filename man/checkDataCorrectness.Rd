@@ -4,7 +4,7 @@
 \alias{checkDataCorrectness}
 \title{Check if data is in MSstatsTMT format}
 \usage{
-checkDataCorrectness(feature_data)
+checkDataCorrectness(feature_data, experiment_type)
 }
 \description{
 Check if data is in MSstatsTMT format

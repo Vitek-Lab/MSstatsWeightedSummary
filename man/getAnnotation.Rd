@@ -4,7 +4,7 @@
 \alias{getAnnotation}
 \title{Make annotation}
 \usage{
-getAnnotation(feature_data)
+getAnnotation(feature_data, experiment_type)
 }
 \description{
 Make annotation

@@ -7,10 +7,12 @@
 processSummarizationOutput(
   summary_per_cluster,
   feature_data,
+  lf_data,
   annotation,
   save_weights_history,
   save_convergence_history,
-  tolerance
+  tolerance,
+  experiment_type
 )
 }
 \arguments{

@@ -18,7 +18,8 @@ setClass("MSstatsWeightedSummary",
                    ConvergenceSummary = "data.table",
                    FinalCriterionValues = "data.table",
                    WeightsHistory = "dtOrNULL",
-                   ConvergenceHistory = "dtOrNULL"))
+                   ConvergenceHistory = "dtOrNULL",
+                   ExperimentType = "character"))
 
 #' Extract feature-level data from MSstatsWeightedSummary object
 #' @export
@@ -199,12 +200,12 @@ setMethod("plotSummary", "MSstatsWeightedSummary",
           })
 
 
-#' Create input for MSstatsTMT::groupComparison function
+#' Create input for MSstatsTMT::groupComparisonTMT function
 #' @export
 setGeneric("makeMSstatsTMTInput",
            function(weighted_summary, msstatstmt_output = NULL)
                standardGeneric("makeMSstatsTMTInput"))
-#' Create input for MSstatsTMT::groupComparison function
+#' Create input for MSstatsTMT::groupComparisonTMT function
 #' @param weighted_summary output of the getWeightedProteinSummary function
 #' @param msstatstmt_output optional output of MSstatsTMT::proteinSummarization function
 #' @return list
@@ -228,6 +229,78 @@ setMethod("makeMSstatsTMTInput", "MSstatsWeightedSummary",
               }
           })
 
+#' Create input for MSstats::groupComparison function
+#' @export
+setGeneric("makeMSstatsInput",
+           function(weighted_summary, msstats_output = NULL)
+               standardGeneric("makeMSstatsInput"))
+#' Create input for MSstats::groupComparison function
+#' @param weighted_summary output of the getWeightedProteinSummary function
+#' @param msstatstmt_output optional output of MSstats::dataProcess function
+#' @return list
+setMethod("makeMSstatsInput", "MSstatsWeightedSummary",
+          function(weighted_summary, msstats_output = NULL) {
+              feature_data = data.table::copy(weighted_summary@FeatureLevelData)
+              protein_data = data.table::copy(weighted_summary@ProteinLevelData)
+
+              if (!is.null(msstats_output)) {
+                  mst_feature = msstats_output[["FeatureLevelData"]]
+                  mst_protein = msstats_output[["ProteinLevelData"]]
+                  feature_data_conv = rbind(feature_data,
+                                       mst_feature,
+                                       use.names = TRUE, fill = TRUE)
+                  protein_data = rbind(protein_data,
+                                       mst_protein,
+                                       use.names = TRUE, fill = TRUE)
+              }
+              if (weighted_summary@ExperimentType == "LF") {
+                  feature_data_conv = feature_data[, list(
+                      PROTEIN = ProteinName,
+                      PEPTIDE = paste(PeptideSequence, Charge, sep = "_"),
+                      TRANSITION = paste(FragmentIon, ProductCharge, sep = "_"),
+                      FEATURE = PSM,
+                      LABEL = IsotopeLabelType,
+                      GROUP = Condition,
+                      RUN = Run,
+                      SUBJECT = BioReplicate,
+                      FRACTION = Fraction,
+                      originalRUN = Run,
+                      censored = FALSE,
+                      INTENSITY = Intensity,
+                      ABUNDANCE = log2IntensityNormalized,
+                      newABUNDANCE = log2IntensityNormalized,
+                                                     predicted = NA_real_,
+                                                     remove = FALSE)]
+                  cols = c("RUN", "Protein", "LogIntensities", "originalRUN",
+                           "GROUP", "SUBJECT", "more50missing", "NumMeasuredFeature")
+                  setnames(protein_data,
+                           c("Run", "Abundance", "Condition", "BioReplicate"),
+                           c("originalRUN", "LogIntensities", "GROUP", "SUBJECT"))
+                  protein_data[, RUN := originalRUN]
+                  protein_data[, more50missing := FALSE]
+                  num_features = feature_data[!is.na(log2IntensityNormalized),
+                                              list(NumMeasuredFeature = data.table::uniqueN(PSM)),
+                                              by = c("ProteinName", "Run")]
+                  group_meas = feature_data[!is.na(log2IntensityNormalized),
+                                            list(TotalGroupMeasurements = data.table::uniqueN(PSM)),
+                                            by = c("ProteinName", "Condition")]
+                  protein_data = merge(protein_data, num_features,
+                                       by.x = c("Protein", "originalRUN"),
+                                       by.y = c("ProteinName", "Run"),
+                                       all.x = TRUE, all.y = TRUE, sort = FALSE)
+                  protein_data = merge(protein_data, group_meas,
+                                       by.x = c("Protein", "GROUP"),
+                                       by.y = c("ProteinName", "Condition"),
+                                       sort = FALSE)
+                  protein_data[, MissingPercentage := 0.0]
+                  protein_data[, NumImputedFeature := 0L]
+              } else {
+                  feature_data_conv = feature_data
+              }
+              list(FeatureLevelData = feature_data_conv,
+                   ProteinLevelData = protein_data)
+          })
+
 
 #' Prepare summarizaton output
 #' @inheritParams getWeightedProteinSummary
@@ -236,43 +309,68 @@ setMethod("makeMSstatsTMTInput", "MSstatsWeightedSummary",
 #' @keywords internal
 processSummarizationOutput = function(summary_per_cluster,
                                       feature_data,
+                                      lf_data,
                                       annotation,
                                       save_weights_history,
                                       save_convergence_history,
-                                      tolerance) {
-    summary = data.table::rbindlist(lapply(summary_per_cluster,
-                                           function(x) x[["summary"]]))
-    summary = merge(summary, annotation, by = c("Run", "Channel"), sort = FALSE)
-    data.table::setnames(summary, "ProteinName", "Protein")
+                                      tolerance,
+                                      experiment_type) {
+    summary = combineSummaries(summary_per_cluster, annotation,
+                               experiment_type)
 
-    fitted_profiles = getAllFittedProfiles(summary_per_cluster)
+    fitted_profiles = getAllFittedProfiles(summary_per_cluster,
+                                           experiment_type)
 
-    weights_summary = getWeightsSummary(summary_per_cluster)
+    weights_summary = getWeightsSummary(summary_per_cluster,
+                                        experiment_type)
     weights_history = getWeightsHistory(summary_per_cluster,
                                         save_weights_history)
-    criteria = getFinalCriteria(summary_per_cluster)
+    criteria = getFinalCriteria(summary_per_cluster, experiment_type)
 
     convergence_summary = getConvergenceSummary(summary_per_cluster,
-                                                tolerance)
+                                                tolerance,
+                                                experiment_type)
     convergence_history = getConvergenceHistory(summary_per_cluster,
                                                 tolerance,
-                                                save_convergence_history)
+                                                save_convergence_history,
+                                                experiment_type)
+
+    final_feature_data = getFinalFeatureData(feature_data,
+                                             lf_data,
+                                             experiment_type)
 
     new("MSstatsWeightedSummary",
-        FeatureLevelData = feature_data,
+        FeatureLevelData = final_feature_data,
         ProteinLevelData = summary,
         Weights = weights_summary[order(Run, PSM)],
         FittedProfiles = fitted_profiles,
         ConvergenceSummary = convergence_summary,
         FinalCriterionValues = criteria,
         WeightsHistory = weights_history,
-        ConvergenceHistory = convergence_history)
+        ConvergenceHistory = convergence_history,
+        ExperimentType = experiment_type)
+}
+
+#' @keywords internal
+combineSummaries = function(summary_per_cluster, annotation,
+                            experiment_type) {
+    summary = data.table::rbindlist(lapply(summary_per_cluster,
+                                           function(x) x[["summary"]]))
+    if (experiment_type == "TMT") {
+        summary = merge(summary, annotation, by = c("Run", "Channel"), sort = FALSE)
+    } else {
+        summary[, Run := NULL]
+        data.table::setnames(summary, "Channel", "Run")
+        summary = merge(summary, annotation, by = "Run", sort = FALSE)
+    }
+    data.table::setnames(summary, "ProteinName", "Protein")
+    summary
 }
 
 #' Get summary of final weights
 #' @inheritParams processSummarizationOutput
 #' @keywords internal
-getWeightsSummary = function(summary_per_cluster) {
+getWeightsSummary = function(summary_per_cluster, experiment_type) {
     weights = data.table::rbindlist(
         lapply(summary_per_cluster,
                function(cluster_summary) {
@@ -296,13 +394,17 @@ getWeightsSummary = function(summary_per_cluster) {
                }), fill = TRUE, use.names = TRUE)
     weights[, IsUnique := data.table::uniqueN(ProteinName) == 1,
             by = c("PSM", "Run")]
+    if (experiment_type == "LF") {
+        weights[, Run := NA_character_]
+    }
     weights
 }
 
 #' Get history of weights from all iterations
 #' @inheritParams processSummarizationOutput
 #' @keywords internal
-getWeightsHistory = function(summary_per_cluster, save_weights_history) {
+getWeightsHistory = function(summary_per_cluster, save_weights_history,
+                             experiment_type) {
     if (save_weights_history) {
         weights_history = data.table::rbindlist(
             lapply(
@@ -331,6 +433,9 @@ getWeightsHistory = function(summary_per_cluster, save_weights_history) {
         )
         weights_history[, IsUnique := data.table::uniqueN(ProteinName) == 1,
                         by = c("PSM", "Run")]
+        if (experiment_type == "LF") {
+            weights_history[, Run := NA_character_]
+        }
         weights_history
     } else {
         NULL
@@ -340,8 +445,9 @@ getWeightsHistory = function(summary_per_cluster, save_weights_history) {
 #' Get convergence summary
 #' @inheritParams processSummarizationOutput
 #' @keywords internal
-getConvergenceSummary = function(summary_per_cluster, tolerance) {
-    data.table::rbindlist(
+getConvergenceSummary = function(summary_per_cluster, tolerance,
+                                 experiment_type) {
+    conv_summary =data.table::rbindlist(
         lapply(
             names(summary_per_cluster),
             function(cluster_summary_id) {
@@ -361,6 +467,10 @@ getConvergenceSummary = function(summary_per_cluster, tolerance) {
                                  FinalDiffValue, tolerance, Converged)]
             })
     )
+    if (experiment_type == "LF") {
+        conv_summary[, Run := NA_character_]
+    }
+    conv_summary
 }
 
 #' Get details of convergence
@@ -368,9 +478,10 @@ getConvergenceSummary = function(summary_per_cluster, tolerance) {
 #' @keywords internal
 getConvergenceHistory = function(summary_per_cluster,
                                  tolerance,
-                                 save_convergence_history) {
+                                 save_convergence_history,
+                                 experiment_type) {
     if (save_convergence_history) {
-        data.table::rbindlist(
+        conv_history = data.table::rbindlist(
             lapply(
                 names(summary_per_cluster),
                 function(cluster_summary_id) {
@@ -393,20 +504,31 @@ getConvergenceHistory = function(summary_per_cluster,
                                      NumIterations, Converged)]
                 })
         )
+        if (experiment_type == "LF") {
+            conv_history[, Run := NA_character_]
+        }
+        conv_history
     } else {
         NULL
     }
 }
 
-getFinalCriteria = function(summary_per_cluster) {
-    data.table::rbindlist(lapply(names(summary_per_cluster), function(cluster_id) {
+#' @keywords internal
+getFinalCriteria = function(summary_per_cluster, experiment_type) {
+    criteria = data.table::rbindlist(lapply(names(summary_per_cluster), function(cluster_id) {
         run_summaries = summary_per_cluster[[cluster_id]]
         cbind(Cluster = cluster_id,
-              FinalCriterion = run_summaries[["final_criterion_values"]])
+              run_summaries[["final_criterion_values"]])
     }))
+    data.table::setnames(criteria, "Criterion", "FinalCriterion")
+    if (experiment_type == "LF") {
+        criteria[, Run := NA_character_]
+    }
+    criteria
 }
 
-getAllFittedProfiles = function(summary_per_cluster) {
+#' @keywords internal
+getAllFittedProfiles = function(summary_per_cluster, experiment_type) {
     data.table::rbindlist(lapply(names(summary_per_cluster), function(cluster_id) {
         run_summaries = summary_per_cluster[[cluster_id]]
         fitted_profiles = run_summaries[["estimated_profiles"]]
@@ -416,7 +538,24 @@ getAllFittedProfiles = function(summary_per_cluster) {
                                 all.x = TRUE, all.y = TRUE, sort = FALSE,
                                 allow.cartesian = TRUE)
         fitted_profiles[, Cluster := cluster_id]
-        fitted_profiles[, list(Cluster, ProteinName, PSM, Run,
-                               Channel, log2IntensityNormalized, Predicted)]
+        fitted_profiles = fitted_profiles[, list(Cluster, ProteinName, PSM, Run,
+                                                 Channel, log2IntensityNormalized, Predicted)]
+        if (experiment_type == "LF") {
+            fitted_profiles[, Run := NULL]
+            data.table::setnames(fitted_profiles, "Channel", "Run")
+        }
+        fitted_profiles
     }))
+}
+
+#' @keywords internal
+getFinalFeatureData = function(feature_data, lf_data, experiment_type) {
+    if (experiment_type == "LF") {
+        feature_data = merge(feature_data, lf_data,
+                             by.x = c("Channel", "PeptideSequence", "Charge", "PSM"),
+                             by.y = c("Run", "PeptideSequence", "PrecursorCharge", "PSM"))
+        feature_data[, Run := NULL]
+        data.table::setnames(feature_data, "Channel", "Run")
+    }
+    feature_data
 }

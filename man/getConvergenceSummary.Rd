@@ -4,7 +4,7 @@
 \alias{getConvergenceSummary}
 \title{Get convergence summary}
 \usage{
-getConvergenceSummary(summary_per_cluster, tolerance)
+getConvergenceSummary(summary_per_cluster, tolerance, experiment_type)
 }
 \arguments{
 \item{summary_per_cluster}{output of getClusterSummaries}

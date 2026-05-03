@@ -4,7 +4,7 @@
 \alias{getWeightsSummary}
 \title{Get summary of final weights}
 \usage{
-getWeightsSummary(summary_per_cluster)
+getWeightsSummary(summary_per_cluster, experiment_type)
 }
 \arguments{
 \item{summary_per_cluster}{output of getClusterSummaries}

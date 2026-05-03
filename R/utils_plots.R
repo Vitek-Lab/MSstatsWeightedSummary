@@ -11,31 +11,45 @@ plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NUL
 
     if (!is.null(channel_order)) {
         feature_plot_input[, Channel := factor(Channel, levels = channel_order,
-                                            ordered = TRUE)]
+                                               ordered = TRUE)]
         protein_plot_input[, Channel := factor(Channel, levels = channel_order,
                                                ordered = TRUE)]
     }
 
     protein_plot_input = proteinData(weighted_summary)[Protein %in% unique(feature_plot_input$ProteinName)]
     setnames(protein_plot_input, "Protein", "ProteinName")
+    if (weighted_summary@ExperimentType == "LF") {
+        x_axis = "Run"
+        annot = "run"
+    } else {
+        x_axis = "Channel"
+        annot = "channel"
+    }
 
-    ggplot() +
-        geom_line(aes(x = Channel, y = log2IntensityNormalized,
-                      group = PSM, linetype = Peptide),
+    plot = ggplot() +
+        geom_line(aes_string(x = x_axis, y = "log2IntensityNormalized",
+                             group = "PSM", linetype = "Peptide"),
                   data = feature_plot_input, alpha = 0.5, size = 1.2) +
-        geom_line(aes(x = Channel, y = Abundance,
-                      color = ProteinName, group = ProteinName),
+        geom_line(aes_string(x = x_axis, y = "Abundance",
+                             color = "ProteinName", group = "ProteinName"),
                   data = protein_plot_input, size = 2) +
         scale_linetype_discrete(name = "peptide") +
-        facet_grid(Run ~ ProteinName) +
         scale_color_discrete(palette = "viridis") +
-        xlab("channel") +
+        xlab(annot) +
         ylab("log-intensity") +
         guides(color = "none") +
         theme_bw() +
         theme(legend.position = "bottom",
               axis.text.x = element_text(angle = 270),
               legend.direction = "horizontal")
+    if (weighted_summary@ExperimentType == "LF") {
+        plot = plot +
+            facet_grid( ~ ProteinName)
+    } else {
+        plot = plot +
+            facet_grid(Run ~ ProteinName)
+    }
+    plot
 }
 
 #' Plot multiple protein-level summaries
@@ -116,22 +130,44 @@ plotFittedProfiles = function(weighted_summary, cluster, channel_order = NULL) {
     fitted_profiles[, Peptide := factor(Peptide,
                                         levels = c("unique", "shared"),
                                         ordered = TRUE)]
-    if (!is.null(channel_order)) {
-        fitted_profiles[, Channel := factor(Channel, levels = channel_order,
+    if (weighted_summary@ExperimentType == "TMT") {
+        if (!is.null(channel_order)) {
+            fitted_profiles[, Channel := factor(Channel, levels = channel_order,
+                                                ordered = TRUE)]
+        }
+    } else {
+        if (!is.null(channel_order)) {
+            fitted_profiles[, Run := factor(Run, levels = channel_order,
                                             ordered = TRUE)]
+        }
+    }
+    if (weighted_summary@ExperimentType == "LF") {
+        x_axis = "Run"
+        annot = "run"
+    } else {
+        x_axis = "Channel"
+        annot = "channel"
     }
 
-    ggplot(fitted_profiles, aes(x = Channel, y = value,
-                                group = paste(variable, PSM),
-                                color = Profile,
-                                linetype = Peptide)) +
+    fitted_profiles[, grouping := paste(variable, PSM)]
+    plot = ggplot(fitted_profiles, aes_string(x = x_axis, y = "value",
+                                              group = "grouping",
+                                              color = "Profile",
+                                              linetype = "Peptide")) +
         geom_line(linewidth = 1.2) +
-        facet_grid(Run ~ ProteinName) +
         scale_color_discrete(name = "fitted", palette = "viridis") +
         scale_linetype_discrete(name = "peptide") +
-        xlab("channel") +
+        xlab("annot") +
         ylab("log-intensity") +
         theme_bw() +
         theme(legend.position = "bottom",
               axis.text.x = element_text(angle = 270))
+    if (weighted_summary@ExperimentType == "LF") {
+        plot = plot +
+            facet_grid( ~ ProteinName)
+    } else {
+        plot = plot +
+            facet_grid(Run ~ ProteinName)
+    }
+    plot
 }

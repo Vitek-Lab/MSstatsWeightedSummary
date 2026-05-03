@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_output.R
 \name{makeMSstatsTMTInput,MSstatsWeightedSummary-method}
 \alias{makeMSstatsTMTInput,MSstatsWeightedSummary-method}
-\title{Create input for MSstatsTMT::groupComparison function}
+\title{Create input for MSstatsTMT::groupComparisonTMT function}
 \usage{
 \S4method{makeMSstatsTMTInput}{MSstatsWeightedSummary}(weighted_summary, msstatstmt_output = NULL)
 }
@@ -15,5 +15,5 @@
 list
 }
 \description{
-Create input for MSstatsTMT::groupComparison function
+Create input for MSstatsTMT::groupComparisonTMT function
 }
