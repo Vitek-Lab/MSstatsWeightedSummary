@@ -174,7 +174,7 @@ convergenceSummary(summary)
 Summary can be plotted for a given cluster or set of proteins using `plotSummary` function.
 
 ```{r }
-plotSummary(summary, cluster = "1__1_1")
+plotSummarizedProteins(summary, cluster = "1__1_1")
 ```
 
 It is also possible to obtain protein cluster information via `proteinClusters` function.
