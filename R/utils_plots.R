@@ -17,6 +17,9 @@ plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NUL
                                            levels = c("unique", "shared"),
                                            ordered = TRUE)]
 
+    protein_plot_input = proteinData(weighted_summary)[Protein %in% unique(feature_plot_input$ProteinName)]
+    setnames(protein_plot_input, "Protein", "ProteinName")
+
     if (!is.null(channel_order)) {
         feature_plot_input[, Channel := factor(Channel, levels = channel_order,
                                                ordered = TRUE)]
@@ -24,8 +27,6 @@ plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NUL
                                                ordered = TRUE)]
     }
 
-    protein_plot_input = proteinData(weighted_summary)[Protein %in% unique(feature_plot_input$ProteinName)]
-    setnames(protein_plot_input, "Protein", "ProteinName")
     if (weighted_summary@ExperimentType == "LF") {
         x_axis = "Run"
         annot = "run"
