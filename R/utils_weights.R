@@ -3,12 +3,9 @@
 #' @inheritParams getWeightedProteinSummary
 #' @return data.table
 #'
-#' @export
+#' @keywords internal
 getPeptideProteinWeights = function(feature_data,
-                                    norm = "p_norm", norm_parameter = 1,
-                                    weights_mode = "contributions",
-                                    weights_penalty = FALSE,
-                                    weights_penalty_param = 0.1) {
+                                    norm = "Huber", norm_parameter = 1e-6) {
     weights_design = getWeightsDesign(feature_data)
     design_matrix = weights_design[["x"]]
     y = weights_design[["y"]]
@@ -22,38 +19,16 @@ getPeptideProteinWeights = function(feature_data,
     psms_cols = sapply(cols_split, function(x) x[1])
     protein_cols = sapply(cols_split, function(x) if (length(x) == 1) NA else x[-1])
 
-    if (weights_penalty) {
-        feature_data[, NumPeptidesPerProtein := uniqueN(ProteinName), by = "PSM"]
-        feature_data[, EqualWeights := 1 / NumPeptidesPerProtein]
-        equal_weights = unique(feature_data[, .(PSM, ProteinName, EqualWeights)])[, EqualWeights]
-        names(equal_weights) = unique(feature_data[, .(PSM, ProteinName, EqualWeights)])[, paste(PSM, ProteinName, sep = "__")]
-        colnames(design_matrix)
-
-        equal_weights_vals = equal_weights[colnames(design_matrix)]
-        equal_weights_vals = ifelse(is.na(equal_weights_vals), 0, equal_weights_vals)
-        equal_weights_vals = unname(equal_weights_vals)
-        multiplier = ifelse(equal_weights_vals == 0, 0, 1)
-    }
-
     params_full = CVXR::Variable(ncol(design_matrix)) # n_params defined earlier and passed to function below?
     constraints = getWeightsConstraints(params_full,
-                                        design_matrix, weights_mode,
+                                        design_matrix,
                                         cols, protein_cols, psms_cols)
 
-    # TODO: move below to another function?
-    if (weights_penalty) {
-        penalty = 0.1 * sum(multiplier * (params_full - equal_weights_vals) ^ 2)
-        if (norm == "p_norm") {
-            obj = CVXR::p_norm(design_matrix %*% params_full - y, norm_parameter) + penalty
-        } else {
-            obj = sum(CVXR::huber(design_matrix %*% params_full - y, norm_parameter)) + penalty
-        }
+
+    if (norm == "p_norm") {
+        obj = CVXR::p_norm(design_matrix %*% params_full - y, norm_parameter)
     } else {
-        if (norm == "p_norm") {
-            obj = CVXR::p_norm(design_matrix %*% params_full - y, norm_parameter)
-        } else {
-            obj = sum(CVXR::huber(design_matrix %*% params_full - y, norm_parameter))
-        }
+        obj = sum(CVXR::huber(design_matrix %*% params_full - y, norm_parameter))
     }
 
     prob_con = CVXR::Problem(CVXR::Minimize(obj), constraints)
@@ -66,7 +41,7 @@ getPeptideProteinWeights = function(feature_data,
         Weight = alphas
     )
     result = result[!is.na(ProteinName)]
-    result = result[Weight > 1e-3] # 1e-4?
+    result = result[Weight > 1e-6] # 1e-4?
     result[, Weight := Weight / sum(Weight), by = "PSM"]
     result
 }
@@ -75,14 +50,14 @@ getPeptideProteinWeights = function(feature_data,
 #' @inheritParams getWeightedProteinSummary
 #' @keywords internal
 getWeightsDesign = function(feature_data) {
-    intensities_tbl = unique(feature_data[, .(PSM, Channel, log2IntensityNormalized)])
+    intensities_tbl = unique(feature_data[, list(PSM, Channel, log2IntensityNormalized)])
 
-    psms_intercept_tbl = unique(feature_data[, .(PSM, Channel, Present = 1)])
+    psms_intercept_tbl = unique(feature_data[, list(PSM, Channel, Present = 1)])
     psms_intercept_tbl = data.table::dcast(psms_intercept_tbl,
                                            PSM + Channel ~ PSM, value.var = "Present", fill = 0)
     colnames(psms_intercept_tbl)[3:ncol(psms_intercept_tbl)] = paste0("int_", 1:(ncol(psms_intercept_tbl) - 2))
 
-    psms_protein_tbl = unique(feature_data[, .(PSM, ProteinName, Channel, CenteredAbundance)])
+    psms_protein_tbl = unique(feature_data[, list(PSM, ProteinName, Channel, CenteredAbundance)])
     psms_protein_tbl = data.table::dcast(psms_protein_tbl,
                                          PSM + Channel ~ PSM + ProteinName,
                                          value.var = "CenteredAbundance",
@@ -111,7 +86,8 @@ getWeightsDesign = function(feature_data) {
 #' @param cols column names of the design matrix
 #' @param protein_cols protein names extracted from column names
 #' @param psms_cols feature names extracted from column names
-getWeightsConstraints = function(params_full, design_matrix, weights_mode,
+#' @keywords internal
+getWeightsConstraints = function(params_full, design_matrix,
                                  cols, protein_cols, psms_cols) {
     unique_psms = unique(psms_cols)
     unique_psms = unique_psms[!grepl("int", unique_psms)]
@@ -138,13 +114,8 @@ getWeightsConstraints = function(params_full, design_matrix, weights_mode,
                                    nrow = nrow(positive_matrix)),
                             positive_matrix)
 
-    if (weights_mode == "contributions") {
-        constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-                                constraint_matrix_full %*% params_full == c(rep(1, n_conditions),
-                                                                            rep(0, nrow(constraint_matrix_full) - n_conditions)))
-    } else {
-        constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
-                                positive_matrix %*% params_full <= rep(1, n_params))
-    }
+    constraints_full = list(positive_matrix %*% params_full >= rep(0, n_params),
+                            constraint_matrix_full %*% params_full == c(rep(1, n_conditions),
+                                                                        rep(0, nrow(constraint_matrix_full) - n_conditions)))
     constraints_full
 }

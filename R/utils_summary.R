@@ -48,27 +48,23 @@ summarizeProteinsClusterSingleRun = function(feature_data, weights,
 getProteinSummaryDesign = function(feature_data) {
     cols = c("PSM", "Channel", "log2IntensityNormalized")
 
-    protein_intercepts = unique(feature_data[, .(ProteinName, PSM, Channel, Weight)])
+    protein_intercepts = unique(feature_data[, list(ProteinName, PSM, Channel, Weight)])
     protein_intercepts = data.table::dcast(protein_intercepts,
                                            PSM + Channel ~ ProteinName,
                                            value.var = "Weight", fill = 0)
-    # protein_intercepts = unique(feature_data[, .(ProteinName, PSM, Channel, Present = 1)])
-    # protein_intercepts = data.table::dcast(protein_intercepts,
-    #                                        PSM + Channel ~ ProteinName,
-    #                                        value.var = "Present", fill = 0)
 
-    feature_intercepts = unique(feature_data[, .(PSM, Channel, Present = 1)])
+    feature_intercepts = unique(feature_data[, list(PSM, Channel, Present = 1)])
     feature_intercepts = data.table::dcast(feature_intercepts,
                                            PSM + Channel ~ PSM,
                                            value.var = "Present", fill = 0)
 
-    channel_design = unique(feature_data[, .(ProteinName, PSM, Channel, Weight)])
+    channel_design = unique(feature_data[, list(ProteinName, PSM, Channel, Weight)])
     channel_design = data.table::dcast(channel_design,
                                        PSM + Channel ~ ProteinName + Channel,
                                        value.var = "Weight", fill = 0,
                                        sep = "__")
 
-    intensities = unique(feature_data[, .(PSM, Channel, log2IntensityNormalized)])
+    intensities = unique(feature_data[, list(PSM, Channel, log2IntensityNormalized)])
 
     dm = merge(intensities, channel_design, by = c("PSM", "Channel"), sort = FALSE)
     dm = merge(dm, feature_intercepts, by = c("PSM", "Channel"), sort = FALSE)

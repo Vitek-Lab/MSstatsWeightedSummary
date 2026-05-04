@@ -3,14 +3,9 @@
 #' @param feature_data data.table in MSstatsTMT format. See also the Details section
 #' @param norm "p_norm" or "Huber"
 #' @param norm_parameter p for norm=="p_norm", M for norm=="Huber"
-#' @param weights_mode "contributions" for "sum to one" and "non-negative" conditions,
-#' "probabilities" for only "non-negative" condition.
 #' @param tolerance tolerance to indicate weights convergence
 #' @param max_iter maximum number of iteration of the procedure
 #' @param initial_summary "unique", "flat" or "flat unique"
-#' @param weights_penalty if TRUE, weights will be penalized for deviations from equal value
-#' for all proteins matching to a given PSM
-#' @param weights_penalty_param penalty parameter
 #' @param save_weights_history logical, if TRUE, weights from all iterations will
 #' be returned
 #' @param save_convergence_history logical, if TRUE, all differences between consecutive
@@ -50,12 +45,9 @@
 #' @export
 #'
 getWeightedProteinSummary = function(feature_data,
-                                     norm = "p_norm", norm_parameter = 1,
-                                     weights_mode = "contributions",
+                                     norm = "Huber", norm_parameter = 1e-6,
                                      tolerance = 1e-1, max_iter = 10,
                                      initial_summary = "unique",
-                                     weights_penalty = FALSE,
-                                     weights_penalty_param = 0.1,
                                      save_weights_history = FALSE,
                                      save_convergence_history = FALSE) {
     experiment_type = checkExperimentType(feature_data)
@@ -67,11 +59,8 @@ getWeightedProteinSummary = function(feature_data,
 
     summary_per_cluster = getClusterSummaries(cluster_input,
                                               norm, norm_parameter,
-                                              weights_mode,
                                               tolerance, max_iter,
-                                              initial_summary,
-                                              weights_penalty,
-                                              weights_penalty_param)
+                                              initial_summary)
     summaries = processSummarizationOutput(summary_per_cluster,
                                            feature_data,
                                            lf_data,
@@ -89,11 +78,8 @@ getWeightedProteinSummary = function(feature_data,
 #' @keywords internal
 getClusterSummaries = function(cluster_input,
                                norm, norm_parameter,
-                               weights_mode,
                                tolerance, max_iter,
-                               initial_summary,
-                               weights_penalty,
-                               weights_penalty_param) {
+                               initial_summary) {
     lapply(
         cluster_input,
         function(single_cluster) {
@@ -101,14 +87,11 @@ getClusterSummaries = function(cluster_input,
             input_by_run = input_by_run[sapply(input_by_run, nrow) > 0]
             peptide_protein_dt_complete = unique(single_cluster[, .(ProteinName, PSM, Run)])
             output_by_run = lapply(input_by_run, function(x) {
-                peptide_protein_dt = unique(x[, .(ProteinName, PSM, Run)])
+                peptide_protein_dt = unique(x[, list(ProteinName, PSM, Run)])
                 getWeightedSummarySingleRun(x, peptide_protein_dt,
                                             norm, norm_parameter,
-                                            weights_mode,
                                             tolerance, max_iter,
-                                            initial_summary,
-                                            weights_penalty,
-                                            weights_penalty_param)
+                                            initial_summary)
             })
 
             summarized_output = data.table::rbindlist(
@@ -165,8 +148,7 @@ getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
     while (sum(abs(current_weights - previous_weights)) > tolerance) {
         previous_weights = current_weights
         weights = getPeptideProteinWeights(input_loop, norm,
-                                           norm_parameter, weights_mode,
-                                           weights_penalty, weights_penalty_param)
+                                           norm_parameter)
         weights_list[[iter]] = weights
         weights_list[[iter]]$Run = run
 
@@ -210,22 +192,22 @@ getInitialSummary = function(input_loop,
     if (initial_summary == "unique") {
         initial_weights = unique(input_loop[, .(ProteinName, PSM, Weight = 1)])
         summarized = summarizeProteinsClusterSingleRun(input_loop,
-                                          initial_weights,
-                                          norm, norm_parameter,
-                                          use_shared = FALSE)
+                                                       initial_weights,
+                                                       norm, norm_parameter,
+                                                       use_shared = FALSE)
         summarized[["ProteinSummary"]]
     } else if (initial_summary == "flat") {
-        means = input_loop[, .(Abundance = mean(log2IntensityNormalized,
-                                                na.rm = TRUE)),
+        means = input_loop[, list(Abundance = mean(log2IntensityNormalized,
+                                                   na.rm = TRUE)),
                            by = "ProteinName"]
-        merge(unique(input_loop[, .(ProteinName, Run, Channel, CenteredAbundance = 0)]),
+        merge(unique(input_loop[, list(ProteinName, Run, Channel, CenteredAbundance = 0)]),
               means, by = "ProteinName", sort = FALSE)
     } else {
         input_loop[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
         prot_has_unique = input_loop[(IsUnique), unique(ProteinName)]
         initial_input = input_loop[ProteinName %in% prot_has_unique]
         initial_weights = unique(initial_input[ProteinName %in% prot_has_unique,
-                                               .(ProteinName, PSM)])
+                                               list(ProteinName, PSM)])
         initial_weights[, Weight := 1 / uniqueN(ProteinName), by = "PSM"]
         initial_unique = summarizeProteinsClusterSingleRun(initial_input,
                                                            initial_weights,
@@ -233,12 +215,12 @@ getInitialSummary = function(input_loop,
                                                            use_shared = FALSE)
         initial_unique = initial_unique[["ProteinSummary"]]
         means = input_loop[!(ProteinName %in% prot_has_unique),
-                           .(Abundance = mean(log2IntensityNormalized,
-                                              na.rm = TRUE)),
+                           list(Abundance = mean(log2IntensityNormalized,
+                                                 na.rm = TRUE)),
                            by = "ProteinName"]
-        initial_no_unique = merge(unique(input_loop[, .(ProteinName, Run,
-                                                        Channel,
-                                                        CenteredAbundance = 0)]),
+        initial_no_unique = merge(unique(input_loop[, list(ProteinName, Run,
+                                                           Channel,
+                                                           CenteredAbundance = 0)]),
                                   means, by = "ProteinName", sort = FALSE)
         rbind(initial_unique, initial_no_unique)
     }

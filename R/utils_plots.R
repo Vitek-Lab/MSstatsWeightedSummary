@@ -1,7 +1,15 @@
+#' Plot protein-level summaries for a selected cluster of proteins
+#'
+#' @param weighted_summary Output of the getWeightedProteinSummary function
+#' @param cluster ID of a cluster of proteins summarized in the `weighted_summary` object
+#' @param channel_order optional character vector of labels of Runs or Channels which
+#' will be used to sort the x-axis
+#'
+#' @return ggplot2 object
+#'
 #' @export
+#'
 plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NULL) {
-    # Adjust for data type??
-    # Cluster and IsUnique should be in the output??
     feature_plot_input = featureData(weighted_summary)[Cluster == cluster]
     feature_plot_input[, IsUnique := data.table::uniqueN(ProteinName) == 1,
                        by = "PSM"]
@@ -52,7 +60,7 @@ plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NUL
     plot
 }
 
-#' Plot multiple protein-level summaries
+#' Plot multiple protein-level summaries for the same set of proteins
 #'
 #' @param ... data.tables with summaries
 #' @param channel_order optional order for x-axis (Channel column)
@@ -94,29 +102,14 @@ plotSummaryComparison = function(..., channel_order = NULL, feature_data = NULL)
 }
 
 
-#' Plot feature profiles
+#' Plot observed PSM-level profiles and compare them to profiles predicted by weighted summarization model
 #'
-#' @param input data.table
+#' @inheritparams plotSummarizedProteins
 #'
-#' @return ggplot
+#' @return ggplot2
 #'
 #' @export
 #'
-plotProfiles = function(input) {
-    input$IsUnique = factor(as.character(input$IsUnique),
-                            levels = c("TRUE", "FALSE"), ordered = TRUE)
-    ggplot(input, aes(x = Channel, y = log2IntensityNormalized,
-                      group = PSM, linetype = IsUnique)) +
-        geom_point() +
-        geom_line() +
-        scale_linetype_discrete(name = "peptide") +
-        facet_wrap(Run ~ ProteinName) +
-        theme_bw() +
-        theme(axis.text.x = element_text(angle = 270),
-              legend.position = "bottom")
-}
-
-#' @export
 plotFittedProfiles = function(weighted_summary, cluster, channel_order = NULL) {
     fitted_profiles = fittedProfiles(weighted_summary)[Cluster == cluster]
     fitted_profiles = melt(fitted_profiles,

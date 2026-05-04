@@ -33,6 +33,7 @@ normalizeSharedPeptides = function(feature_data) {
 
 #' Normalization between channels (before summarization)
 #' @inheritParams getWeightedProteinSummary
+#' @author based on MSstatsTMT code by Ting Huang
 #' @return data.table
 #' @keywords internal
 normalizePeptides = function(feature_data) {
