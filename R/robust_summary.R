@@ -125,9 +125,8 @@ getClusterSummaries = function(cluster_input,
 #' @inheritParams getWeightedProteinSummary
 #' @keywords internal
 getWeightedSummarySingleRun = function(feature_data, peptide_protein_dt,
-                                       norm, norm_parameter, weights_mode,
-                                       tolerance, max_iter, initial_summary,
-                                       weights_penalty, weights_penalty_param) {
+                                       norm, norm_parameter,
+                                       tolerance, max_iter, initial_summary) {
     weights_list = vector("list", max_iter)
     input_loop = feature_data[, .(Run, ProteinName, PSM,
                                   Channel,

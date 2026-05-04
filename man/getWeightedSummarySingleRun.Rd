@@ -9,12 +9,9 @@ getWeightedSummarySingleRun(
   peptide_protein_dt,
   norm,
   norm_parameter,
-  weights_mode,
   tolerance,
   max_iter,
-  initial_summary,
-  weights_penalty,
-  weights_penalty_param
+  initial_summary
 )
 }
 \arguments{
