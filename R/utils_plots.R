@@ -104,7 +104,7 @@ plotSummaryComparison = function(..., channel_order = NULL, feature_data = NULL)
 
 #' Plot observed PSM-level profiles and compare them to profiles predicted by weighted summarization model
 #'
-#' @inheritparams plotSummarizedProteins
+#' @inheritParams plotSummarizedProteins
 #'
 #' @return ggplot2
 #'

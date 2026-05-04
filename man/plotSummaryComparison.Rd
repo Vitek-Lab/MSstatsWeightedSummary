@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_plots.R
 \name{plotSummaryComparison}
 \alias{plotSummaryComparison}
-\title{Plot multiple protein-level summaries}
+\title{Plot multiple protein-level summaries for the same set of proteins}
 \usage{
 plotSummaryComparison(..., channel_order = NULL, feature_data = NULL)
 }
@@ -18,5 +18,5 @@ in each channel}
 ggplot
 }
 \description{
-Plot multiple protein-level summaries
+Plot multiple protein-level summaries for the same set of proteins
 }

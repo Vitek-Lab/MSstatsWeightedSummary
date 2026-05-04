@@ -15,4 +15,7 @@ data.table
 \description{
 Normalization between channels (before summarization)
 }
+\author{
+based on MSstatsTMT code by Ting Huang
+}
 \keyword{internal}

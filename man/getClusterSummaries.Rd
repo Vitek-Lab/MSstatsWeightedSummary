@@ -8,12 +8,9 @@ getClusterSummaries(
   cluster_input,
   norm,
   norm_parameter,
-  weights_mode,
   tolerance,
   max_iter,
-  initial_summary,
-  weights_penalty,
-  weights_penalty_param
+  initial_summary
 )
 }
 \arguments{
@@ -23,19 +20,11 @@ getClusterSummaries(
 
 \item{norm_parameter}{p for norm=="p_norm", M for norm=="Huber"}
 
-\item{weights_mode}{"contributions" for "sum to one" and "non-negative" conditions,
-"probabilities" for only "non-negative" condition.}
-
 \item{tolerance}{tolerance to indicate weights convergence}
 
 \item{max_iter}{maximum number of iteration of the procedure}
 
 \item{initial_summary}{"unique", "flat" or "flat unique"}
-
-\item{weights_penalty}{if TRUE, weights will be penalized for deviations from equal value
-for all proteins matching to a given PSM}
-
-\item{weights_penalty_param}{penalty parameter}
 }
 \description{
 Calculate weighted summaries for a list of clusters

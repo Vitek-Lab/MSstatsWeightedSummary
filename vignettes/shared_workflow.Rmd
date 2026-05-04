@@ -133,7 +133,7 @@ This function requires following input:
 
 ```{r }
 summary = getWeightedProteinSummary(simulated_dataset, norm = "Huber",
-                                    norm_parameter = 0.1,
+                                    norm_parameter = 1e-6,
                                     max_iter = 30)
 ```
 

@@ -7,7 +7,6 @@
 getWeightsConstraints(
   params_full,
   design_matrix,
-  weights_mode,
   cols,
   protein_cols,
   psms_cols
@@ -18,9 +17,6 @@ getWeightsConstraints(
 
 \item{design_matrix}{design matrix for weights optimization}
 
-\item{weights_mode}{"contributions" for "sum to one" and "non-negative" conditions,
-"probabilities" for only "non-negative" condition.}
-
 \item{cols}{column names of the design matrix}
 
 \item{protein_cols}{protein names extracted from column names}
@@ -30,3 +26,4 @@ getWeightsConstraints(
 \description{
 Get constraints for weights
 }
+\keyword{internal}
