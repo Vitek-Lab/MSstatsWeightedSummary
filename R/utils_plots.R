@@ -36,12 +36,12 @@ plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NUL
     }
 
     plot = ggplot() +
-        geom_line(aes_string(x = x_axis, y = "log2IntensityNormalized",
-                             group = "PSM", linetype = "Peptide"),
-                  data = feature_plot_input, alpha = 0.5, size = 1.2) +
-        geom_line(aes_string(x = x_axis, y = "Abundance",
-                             color = "ProteinName", group = "ProteinName"),
-                  data = protein_plot_input, size = 2) +
+        geom_line(aes(x = .data[[x_axis]], y = .data[["log2IntensityNormalized"]],
+                             group = .data[["PSM"]], linetype = .data[["Peptide"]]),
+                  data = feature_plot_input, alpha = 0.5, linewidth = 1.2) +
+        geom_line(aes(x = .data[[x_axis]], y = .data[["Abundance"]],
+                             color = .data[["ProteinName"]], group = .data[["ProteinName"]]),
+                  data = protein_plot_input, linewidth = 2) +
         scale_linetype_discrete(name = "peptide") +
         scale_color_discrete(palette = "viridis") +
         xlab(annot) +
@@ -58,47 +58,6 @@ plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NUL
         plot = plot +
             facet_grid(Run ~ ProteinName)
     }
-    plot
-}
-
-#' Plot multiple protein-level summaries for the same set of proteins
-#'
-#' @param ... data.tables with summaries
-#' @param channel_order optional order for x-axis (Channel column)
-#' @param feature_data optional data.table for plotting feature-level distribution
-#' in each channel
-#'
-#' @return ggplot
-#' @import ggplot2
-#'
-#' @export
-#'
-plotSummaryComparison = function(..., channel_order = NULL, feature_data = NULL) {
-    df_list = list(...)
-    summaries_df = rbindlist(df_list, use.names = TRUE, fill = TRUE)
-    if (!is.null(channel_order)) {
-        summaries_df$Channel = factor(summaries_df$Channel,
-                                      levels = channel_order,
-                                      ordered = TRUE)
-    }
-    plot = ggplot(summaries_df, aes(x = Channel, y = Abundance, group = Method,
-                                    color = Method))
-    if (!is.null(feature_data)) {
-        plot = plot +
-            # geom_boxplot(aes(x = Channel, y = log2IntensityNormalized),
-            #              data = feature_data, inherit.aes = FALSE) +
-            geom_line(aes(x = Channel, y = log2IntensityNormalized,
-                          group = PSM, linetype = IsUnique),
-                      data = feature_data, inherit.aes = FALSE,
-                      color = "grey", alpha = 0.5, size = 0.8)
-    }
-    plot = plot +
-        geom_point(size = 1.2) +
-        geom_line(size = 1.2) +
-        facet_wrap(Run~ProteinName) +
-        theme_bw() +
-        theme(axis.text.x = element_text(angle = 270),
-              legend.position = "bottom")
     plot
 }
 
@@ -144,10 +103,10 @@ plotFittedProfiles = function(weighted_summary, cluster, channel_order = NULL) {
     }
 
     fitted_profiles[, grouping := paste(variable, PSM)]
-    plot = ggplot(fitted_profiles, aes_string(x = x_axis, y = "value",
-                                              group = "grouping",
-                                              color = "Profile",
-                                              linetype = "Peptide")) +
+    plot = ggplot(fitted_profiles, aes(x = .data[[x_axis]], y = .data[["value"]],
+                                              group = .data[["grouping"]],
+                                              color = .data[["Profile"]],
+                                              linetype = .data[["Peptide"]])) +
         geom_line(linewidth = 1.2) +
         scale_color_discrete(name = "fitted", palette = "viridis") +
         scale_linetype_discrete(name = "peptide") +
