@@ -8,7 +8,8 @@
 #' @export
 #'
 normalizeSharedPeptides = function(feature_data) {
-    Intensity = log2Intensity = NULL
+    PSM = Intensity = log2Intensity = ProteinName = PeptideSequence = Run = Charge = `:=` = NULL
+    Mixture = TechRepMixture = Channel = BioReplicate = Condition = log2IntensityNormalized = NULL
 
     pp_match = unique(feature_data[, list(ProteinName, PeptideSequence)])
     annotation = unique(feature_data[, list(Run, Mixture, TechRepMixture,
@@ -33,12 +34,13 @@ normalizeSharedPeptides = function(feature_data) {
 
 #' Normalization between channels (before summarization)
 #' @inheritParams getWeightedProteinSummary
+#' @importFrom stats median
 #' @author based on MSstatsTMT code by Ting Huang
 #' @return data.table
 #' @keywords internal
 normalizePeptides = function(feature_data) {
-    log2Intensity = Intensity = Run = Channel = NULL
-    MedianLog2Int = Diff = NULL
+    log2Intensity = Intensity = Run = Channel = PSM = NULL
+    MedianLog2Int = Diff = `:=` = log2IntensityNormalized = NULL
 
     feature_data[, MedianLog2Int := median(log2Intensity, na.rm = TRUE),
                    by = c("Run", "Channel")]

@@ -17,6 +17,8 @@ createPeptideProteinGraph(
 \item{protein_column}{name of a column with protein names.}
 
 \item{peptide_column}{name of a column with peptide sequences.}
+
+\item{by_run}{applies only to TMT data. If TRUE, clusters will be computed for each TMT run separately.}
 }
 \description{
 Wrapper around `igraph::graph_from_data_frame`

@@ -6,6 +6,9 @@
 \usage{
 proteinClusters(weighted_summary)
 }
+\arguments{
+\item{weighted_summary}{output of the getWeightedProteinSummary function}
+}
 \description{
 Extract cluster information from MSstatsWeightedSummary object
 }

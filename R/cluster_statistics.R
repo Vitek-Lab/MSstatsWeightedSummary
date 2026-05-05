@@ -3,6 +3,7 @@
 #' @param quantification_data MS data, preferably in `MSstats` or `MSstatsTMT` format.
 #' @param protein_column name of a column with protein names.
 #' @param peptide_column name of a column with peptide sequences.
+#' @param by_run applies only to TMT data. If TRUE, clusters will be computed for each TMT run separately.
 #'
 #' @importFrom igraph graph_from_data_frame
 #'
@@ -43,6 +44,7 @@ createPeptideProteinGraph = function(quantification_data,
 #'
 addClusterMembership = function(quantification_data, peptide_protein_graph,
                                 protein_column = "ProteinName") {
+    Run = ProteinName = NULL
 
     if (inherits(peptide_protein_graph, "list")) {
         membership = data.table::rbindlist(lapply(names(peptide_protein_graph), function(run_name) {
@@ -83,7 +85,8 @@ addClusterMembership = function(quantification_data, peptide_protein_graph,
 #' @export
 #'
 getClusterStatistics = function(quantification_data, merge = FALSE) {
-    ProteinName = PeptideSequence = NULL
+    `:=` = NumProteins = NumPeptides = ProteinName = PeptideSequence = EachHasUnique = NULL
+    NumProteinsPerPeptide = TotalSize = NumPeptidesPerProtein = IsUnique = HasUnique = AnyHasUnique = NULL
 
     statistics = quantification_data[, list(ProteinName, PeptideSequence,
                                             NumProteins = data.table::uniqueN(ProteinName),

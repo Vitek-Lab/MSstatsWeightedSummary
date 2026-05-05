@@ -6,6 +6,9 @@
 \usage{
 fittedProfiles(weighted_summary)
 }
+\arguments{
+\item{weighted_summary}{output of the getWeightedProteinSummary function}
+}
 \description{
 Extract fitted PSM-level profiles from MSstatsWeightedSummary object
 }

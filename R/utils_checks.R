@@ -11,6 +11,9 @@ checkExperimentType = function(feature_data) {
 #' Check if data is in MSstatsTMT format
 #' @keywords internal
 checkDataCorrectness = function(feature_data, experiment_type) {
+    `:=` = Cluster = Run = IsotopeLabelType = FragmentIon = ProductCharge = NULL
+    Fraction = PSM = PeptideSequence = PrecursorCharge = NULL
+
     if (experiment_type == "TMT") {
         required_columns = c("ProteinName", "PeptideSequence", "Charge",
                              "PSM", "Channel", "Intensity", "Run",
@@ -104,7 +107,8 @@ checkDataCorrectness = function(feature_data, experiment_type) {
 #' @inheritParams getWeightedProteinSummary
 #' @keywords internal
 getProteinsClusters = function(feature_data) {
-    feature_data = feature_data[, .(Cluster, Run, ProteinName, PSM, Channel,
+    Cluster = Run = ProteinName = PSM = Channel = log2IntensityNormalized = NULL
+    feature_data = feature_data[, list(Cluster, Run, ProteinName, PSM, Channel,
                                     log2IntensityNormalized)]
     split(feature_data, feature_data[["Cluster"]])
 }
@@ -112,6 +116,8 @@ getProteinsClusters = function(feature_data) {
 #' Make annotation
 #' @keywords internal
 getAnnotation = function(feature_data, experiment_type) {
+    Run = Mixture = TechRepMixture = Channel = Condition = BioReplicate = NULL
+    Fraction = IsotopeLabelType = NULL
     if (experiment_type == "TMT") {
         unique(feature_data[, list(Run, Mixture, TechRepMixture,
                                    Channel, Condition, BioReplicate)])
@@ -123,6 +129,9 @@ getAnnotation = function(feature_data, experiment_type) {
 
 #' @keywords internal
 getLFDataPortion = function(feature_data, experiment_type) {
+    PSM = PeptideSequence = PrecursorCharge = FragmentIon = ProductCharge = NULL
+    Run = Fraction = IsotopeLabelType = NULL
+
     if (experiment_type == "TMT") {
         NULL
     } else {
@@ -134,10 +143,13 @@ getLFDataPortion = function(feature_data, experiment_type) {
 
 #' @keywords internal
 reshapeLFData = function(feature_data, experiment_type) {
+    Cluster = ProteinName = PeptideSequence = PrecursorCharge = PSM = NULL
+    Condition = BioReplicate = Run = Intensity = log2IntensityNormalized = NULL
+
     if (experiment_type == "TMT") {
         feature_data
     } else {
-        feature_data[, .(
+        feature_data[, list(
             Cluster,
             ProteinName,
             PeptideSequence,

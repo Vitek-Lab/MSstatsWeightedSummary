@@ -70,7 +70,7 @@ This data set contains some additional columns. Required input consists of the s
 ProteinName, PeptideSequence, Charge, PSM, Run, Channel, Intensity, Condition, BioReplicate, Mixture, TechRepMixture.
 
 ```{r }
-required_input = simulated_dataset[, .(ProteinName, PeptideSequence, Charge, PSM, Run, 
+required_input = simulated_dataset[, list(ProteinName, PeptideSequence, Charge, PSM, Run, 
                            Channel, Intensity, Condition, BioReplicate,
                            Mixture, TechRepMixture)]
 head(required_input)
@@ -104,7 +104,7 @@ Functions `createPeptideProteinGraph` and `addClusterMembership` can be used to 
 ```{r }
 pp_graph = createPeptideProteinGraph(required_input)
 required_input = addClusterMembership(required_input, pp_graph)
-unique(required_input[, .(Cluster, ProteinName)])
+unique(required_input[, list(Cluster, ProteinName)])
 ```
 Functions `getClusterStatistics` and `plotClusterStats` can be used to calculate and visualize additional summary statistics such as counts of unique and shared peptides in each cluster.
 
@@ -113,7 +113,7 @@ Functions `getClusterStatistics` and `plotClusterStats` can be used to calculate
 In the format with duplicated rows for shared peptides, normalization requires care. To ensure that each feature intensity is used only once for normalization, we provide a function called `normalizeSharedPeptides`. This function performs feature-level normalization of data previously implemented in MSstatsTMT package. As a result, a column called `log2IntensityNormalized` is added to the  data.
 
 ```{r }
-head(simulated_dataset[, .(ProteinName, PSM, Run, Channel, log2IntensityNormalized)])
+head(simulated_dataset[, list(ProteinName, PSM, Run, Channel, log2IntensityNormalized)])
 ```
 
 
@@ -205,6 +205,10 @@ row.names(cm) = paste(1:4, "vs", 5:8)
 
 gc_output = groupComparisonTMT(gc_input, cm, use_log_file = FALSE)
 gc_output$ComparisonResult
+```
+
+```{r }
+sessionInfo()
 ```
 
 <!-- plotDistributionComparison	Compare distribution of log2-intensities per channel with and without shared peptides -->

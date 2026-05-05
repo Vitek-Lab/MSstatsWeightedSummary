@@ -1,7 +1,24 @@
+#' Process protein isoforms to prepare data for MSstats analysis
+#'
+#' @param quantification_data data in MSstatsTMT format
+#' @param remove_single_shared if TRUE (default), proteins identified by a single shared peptide will be removed
+#' @param merge_identical if TRUE (default), proteins identified by the same set of peptides in a run will be merged
+#' into a single protein label (concatenation of their IDs)
+#' @param remove_subsets if TRUE, proteins with no unique peptides in a run will be removed from the analysis (defaults to FALSE)
+#' @param subset_treatment character describing the treatment of sets of proteins that do not have unique peptides.
+#' Currently, only removing or keeping all subset proteins is possible.
+#'
 #' @export
+#'
+#' @return data.table in a format compatible with MSstatsWeightedSummary workflow
+#'
 processIsoforms = function(quantification_data, remove_single_shared = TRUE,
                            merge_identical = TRUE, remove_subsets = FALSE,
                            subset_treatment = "remove_all") {
+    `:=` = UniqueOnly = NumPeptidesPerProtein = HasUnique = Cluster = PSM = NULL
+    ProteinName = PeptideSequence = Charge = Run = Channel = log2Intensity = NULL
+    BioReplicate = Condition = Mixture = TechRepMixture = NULL
+
     quantification_data = getUniquenessInfo(quantification_data)
     unique_only = quantification_data[(UniqueOnly)]
     quantification_data = quantification_data[!(UniqueOnly)]
@@ -22,7 +39,7 @@ processIsoforms = function(quantification_data, remove_single_shared = TRUE,
         data_by_cluster = split(quantification_data, quantification_data[["Cluster"]])
         processed_clusters = lapply(data_by_cluster, mergeIdenticalProteins)
         processed_clusters = data.table::rbindlist(processed_clusters)
-        setnames(quantification_data, "ProteinName", "ProteinNameOriginal")
+        data.table::setnames(quantification_data, "ProteinName", "ProteinNameOriginal")
         quantification_data = merge(quantification_data, processed_clusters,
                                     by = "ProteinNameOriginal", sort = FALSE)
         quantification_data = unique(quantification_data[, colnames(quantification_data) != "ProteinNameOriginal", with = FALSE])
@@ -37,28 +54,16 @@ processIsoforms = function(quantification_data, remove_single_shared = TRUE,
             unique_only = rbind(unique_only, quantification_data[(UniqueOnly)],
                                 fill = TRUE)
             quantification_data = quantification_data[!(UniqueOnly)]
+
         } else {
-            subset_clusters = quantification_data[!(HasUnique)]
-            subset_counts = subset_clusters[, .(NumFeatures = data.table::uniqueN(PSM)),
-                                            by = c("ProteinName", "Cluster")]
-            subset_counts[, Rank := rank(-NumFeatures), by = "Cluster"]
-            subset_counts[, list(ProteinName = paste(sort(unique(ProteinName)),
-                                                     sep = ";", collapse = ";"),
-                                 OriginalProteinName = ProteinName[is.max(Rank)]), by = "Cluster"]
-            # subset_counts = subset_counts[Rank == 1]
-            # quantification_data = quantification_data[(HasUnique) | ProteinName %in% subset_counts[, ProteinName]]
-            # can be done with merge?
-            quantification_data[, ProteinName := NULL]
-            quantification_data = merge(quantificatioN_data, subset_counts,
-                                        sort = FALSE)
-            quantification_data = getUniquenessInfo(quantification_data)
+            stop("Not implemented yet")
         }
     }
 
     output = rbind(unique_only, quantification_data, fill = TRUE)
-    output = output[, .(ProteinName, PeptideSequence, Charge, PSM,
-                        Run, Channel, log2Intensity, BioReplicate, Condition,
-                        Mixture, TechRepMixture)]
+    output = output[, list(ProteinName, PeptideSequence, Charge, PSM,
+                           Run, Channel, log2Intensity, BioReplicate, Condition,
+                           Mixture, TechRepMixture)]
     pp_g = createPeptideProteinGraph(output)
     output = addClusterMembership(output, pp_g)
     output
@@ -66,6 +71,9 @@ processIsoforms = function(quantification_data, remove_single_shared = TRUE,
 
 #' @keywords internal
 getUniquenessInfo = function(quantification_data) {
+    `:=` = IsUnique = ProteinName = PSM = HasUnique = NULL
+    NumPeptidesPerProtein = UniqueOnly = NULL
+
     quantification_data[, IsUnique := data.table::uniqueN(ProteinName) == 1,
                         by = "PSM"]
     quantification_data[, HasUnique := any(IsUnique), by = "ProteinName"]
@@ -77,9 +85,11 @@ getUniquenessInfo = function(quantification_data) {
 
 #' @keywords internal
 mergeIdenticalProteins = function(cluster_data) {
-    pp_m = as.matrix(data.table::dcast(unique(cluster_data[, .(ProteinName, PSM, Present = 1)]),
-                                     PSM ~ ProteinName, value.var = "Present",
-                                     fill = 0)[, -1])
+    ProteinName = PSM = Present = NULL
+
+    pp_m = as.matrix(data.table::dcast(unique(cluster_data[, list(ProteinName, PSM, Present = 1)]),
+                                       PSM ~ ProteinName, value.var = "Present",
+                                       fill = 0)[, -1])
     pp_m_cor = getIdenticalIndicator(pp_m)
     iso_graph = igraph::graph_from_adjacency_matrix(abs(pp_m_cor - 1) < 1e-10)
     graph_decomposed = igraph::decompose.graph(iso_graph)
@@ -93,6 +103,7 @@ mergeIdenticalProteins = function(cluster_data) {
     protein_clusters
 }
 
+#' @keywords internal
 getIdenticalIndicator = function(pp_m) {
     res_m = matrix(0, nrow = ncol(pp_m), ncol = ncol(pp_m))
     colnames(res_m) = colnames(pp_m)

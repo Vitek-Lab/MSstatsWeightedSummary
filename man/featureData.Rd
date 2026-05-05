@@ -6,6 +6,12 @@
 \usage{
 featureData(weighted_summary, proteins = NULL)
 }
+\arguments{
+\item{weighted_summary}{output of the getWeightedProteinSummary function}
+
+\item{proteins}{optional character vector of proteins to extract. If NULL, all proteins
+will be returned}
+}
 \description{
 Extract feature-level data from MSstatsWeightedSummary object
 }

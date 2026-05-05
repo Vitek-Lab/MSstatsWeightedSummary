@@ -9,7 +9,7 @@
 \arguments{
 \item{weighted_summary}{output of the getWeightedProteinSummary function}
 
-\item{msstatstmt_output}{optional output of MSstats::dataProcess function}
+\item{msstats_output}{optional output of MSstats::dataProcess function}
 }
 \value{
 list

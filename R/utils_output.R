@@ -2,6 +2,7 @@
 #' @inheritParams getWeightedProteinSummary
 #' @param summary_per_cluster output of getClusterSummaries
 #' @param annotation output of getAnnotation
+#' @importFrom methods new
 #' @keywords internal
 processSummarizationOutput = function(summary_per_cluster,
                                       feature_data,
@@ -11,6 +12,8 @@ processSummarizationOutput = function(summary_per_cluster,
                                       save_convergence_history,
                                       tolerance,
                                       experiment_type) {
+    Run = PSM = NULL
+
     summary = combineSummaries(summary_per_cluster, annotation,
                                experiment_type)
 
@@ -50,6 +53,7 @@ processSummarizationOutput = function(summary_per_cluster,
 #' @keywords internal
 combineSummaries = function(summary_per_cluster, annotation,
                             experiment_type) {
+    `:=` = Run = NULL
     summary = data.table::rbindlist(lapply(summary_per_cluster,
                                            function(x) x[["summary"]]))
     if (experiment_type == "TMT") {
@@ -65,6 +69,8 @@ combineSummaries = function(summary_per_cluster, annotation,
 
 #' @keywords internal
 getFinalCriteria = function(summary_per_cluster, experiment_type) {
+    Cluster = Run = `:=` = NULL
+
     criteria = data.table::rbindlist(lapply(names(summary_per_cluster), function(cluster_id) {
         run_summaries = summary_per_cluster[[cluster_id]]
         cbind(Cluster = cluster_id,
@@ -79,6 +85,8 @@ getFinalCriteria = function(summary_per_cluster, experiment_type) {
 
 #' @keywords internal
 getAllFittedProfiles = function(summary_per_cluster, experiment_type) {
+    `:=` = Cluster = ProteinName = PSM = Run = Channel = log2IntensityNormalized = Predicted = NULL
+
     data.table::rbindlist(lapply(names(summary_per_cluster), function(cluster_id) {
         run_summaries = summary_per_cluster[[cluster_id]]
         fitted_profiles = run_summaries[["estimated_profiles"]]
@@ -100,6 +108,8 @@ getAllFittedProfiles = function(summary_per_cluster, experiment_type) {
 
 #' @keywords internal
 getFinalFeatureData = function(feature_data, lf_data, experiment_type) {
+    Run = `:=` = NULL
+
     if (experiment_type == "LF") {
         feature_data = merge(feature_data, lf_data,
                              by.x = c("Channel", "PeptideSequence", "Charge", "PSM"),
@@ -115,6 +125,8 @@ getConvergenceHistory = function(summary_per_cluster,
                                  tolerance,
                                  save_convergence_history,
                                  experiment_type) {
+    `:=` = Cluster = NumIterations = Iter = Converged = DiffValue = Run = NULL
+
     if (save_convergence_history) {
         conv_history = data.table::rbindlist(
             lapply(
@@ -153,6 +165,8 @@ getConvergenceHistory = function(summary_per_cluster,
 #' @keywords internal
 getWeightsHistory = function(summary_per_cluster, save_weights_history,
                              experiment_type) {
+    `:=` = IsUnique = ProteinName = Run = Weight = NULL
+
     if (save_weights_history) {
         weights_history = data.table::rbindlist(
             lapply(
@@ -195,6 +209,8 @@ getWeightsHistory = function(summary_per_cluster, save_weights_history,
 #' @keywords internal
 getConvergenceSummary = function(summary_per_cluster, tolerance,
                                  experiment_type) {
+    `:=` = Cluster = Run = NumIterations = FinalDiffValue = Converged = NULL
+
     conv_summary =data.table::rbindlist(
         lapply(
             names(summary_per_cluster),
@@ -225,6 +241,8 @@ getConvergenceSummary = function(summary_per_cluster, tolerance,
 #' @inheritParams processSummarizationOutput
 #' @keywords internal
 getWeightsSummary = function(summary_per_cluster, experiment_type) {
+    `:=` = Run = Weight = Total = IsUnique = ProteinName = NULL
+
     weights = data.table::rbindlist(
         lapply(summary_per_cluster,
                function(cluster_summary) {

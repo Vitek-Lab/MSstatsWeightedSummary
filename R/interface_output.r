@@ -25,6 +25,9 @@ setClass("MSstatsWeightedSummary",
                    ExperimentType = "character"))
 
 #' Extract feature-level data from MSstatsWeightedSummary object
+#' @param weighted_summary output of the getWeightedProteinSummary function
+#' @param proteins optional character vector of proteins to extract. If NULL, all proteins
+#' will be returned
 #' @export
 setGeneric("featureData",
            function(weighted_summary, proteins = NULL) standardGeneric("featureData"))
@@ -35,6 +38,8 @@ setGeneric("featureData",
 #' @return data.table
 setMethod("featureData", "MSstatsWeightedSummary",
           function(weighted_summary, proteins = NULL) {
+              ProteinName = NULL
+
               feature_level =  weighted_summary@FeatureLevelData
               if (!is.null(proteins)) {
                   feature_level = feature_level[ProteinName %in% proteins]
@@ -44,16 +49,17 @@ setMethod("featureData", "MSstatsWeightedSummary",
 
 
 #' Extract protein-level data from MSstatsWeightedSummary object
+#' @inheritParams featureData
 #' @export
 setGeneric("proteinData",
            function(weighted_summary, proteins = NULL) standardGeneric("proteinData"))
 #' Extract protein-level data from MSstatsWeightedSummary object
-#' @param weighted_summary output of the getWeightedProteinSummary function
-#' @param proteins optional character vector of proteins to extract. If NULL, all proteins
-#' will be returned
+#' @inheritParams featureData
 #' @return data.table
 setMethod("proteinData", "MSstatsWeightedSummary",
           function(weighted_summary, proteins = NULL) {
+              ProteinName = NULL
+
               protein_level =  weighted_summary@ProteinLevelData
               if (!is.null(proteins)) {
                   protein_level = protein_level[ProteinName %in% proteins]
@@ -62,18 +68,20 @@ setMethod("proteinData", "MSstatsWeightedSummary",
           })
 
 #' Extract weights data from MSstatsWeightedSummary object
+#' @inheritParams featureData
+#' @param shared_only logical, output data.table will only include shared peptides
 #' @export
 setGeneric("featureWeights",
            function(weighted_summary, proteins = NULL, shared_only = TRUE)
                standardGeneric("featureWeights"))
 #' Extract weights data from MSstatsWeightedSummary object
-#' @param weighted_summary output of the getWeightedProteinSummary function
-#' @param proteins optional character vector of proteins to extract. If NULL, all proteins
-#' will be returned
+#' @inheritParams featureData
 #' @param shared_only logical, output data.table will only include shared peptides
 #' @return data.table
 setMethod("featureWeights", "MSstatsWeightedSummary",
           function(weighted_summary, proteins = NULL, shared_only = TRUE) {
+              ProteinName = IsUnique = NULL
+
               weights = weighted_summary@Weights
               if (!is.null(proteins)) {
                   weights = weights[ProteinName %in% proteins]
@@ -85,27 +93,43 @@ setMethod("featureWeights", "MSstatsWeightedSummary",
           })
 
 #' Extract convergence information from MSstatsWeightedSummary object
+#' @inheritParams featureData
 #' @export
 setGeneric("convergenceSummary",
            function(weighted_summary) standardGeneric("convergenceSummary"))
 #' Extract convergence information from MSstatsWeightedSummary object
-#' @param weighted_summary output of the getWeightedProteinSummary function
+#' @inheritParams featureData
 #' @return data.table
 setMethod("convergenceSummary", "MSstatsWeightedSummary",
           function(weighted_summary) {
               weighted_summary@ConvergenceSummary
           })
 
+#' Extract values of the model-fitting criterion from MSstatsWeightedSummary object
+#' @inheritParams featureData
+#' @export
+setGeneric("criterionValues",
+           function(weighted_summary) standardGeneric("criterionValues"))
+#' Extract values of the model-fitting criterion from MSstatsWeightedSummary object
+#' @inheritParams featureData
+#' @return data.table
+setMethod("criterionValues", "MSstatsWeightedSummary",
+          function(weighted_summary) {
+              weighted_summary@FinalCriterionValues
+          })
+
+
 #' Extract weights history from MSstatsWeightedSummary object
+#' @inheritParams featureWeights
 #' @export
 setGeneric("weightsHistory",
            function(weighted_summary, shared_only = TRUE) standardGeneric("weightsHistory"))
 #' Extract weights history from MSstatsWeightedSummary object
-#' @param weighted_summary output of the getWeightedProteinSummary function
-#' @param shared_only logical, output data.table will only include shared peptides
+#' @inheritParams featureWeights
 #' @return data.table
 setMethod("weightsHistory", "MSstatsWeightedSummary",
           function(weighted_summary, shared_only = TRUE) {
+              IsUnique = NULL
               weights_history = weighted_summary@WeightsHistory
               if (shared_only) {
                   weights_history = weights_history[!(IsUnique)]
@@ -114,11 +138,12 @@ setMethod("weightsHistory", "MSstatsWeightedSummary",
           })
 
 #' Extract convergence history from MSstatsWeightedSummary object
+#' @inheritParams featureData
 #' @export
 setGeneric("convergenceHistory",
            function(weighted_summary) standardGeneric("convergenceHistory"))
 #' Extract convergence history from MSstatsWeightedSummary object
-#' @param weighted_summary output of the getWeightedProteinSummary function
+#' @inheritParams featureData
 #' @return data.table
 setMethod("convergenceHistory", "MSstatsWeightedSummary",
           function(weighted_summary) {
@@ -126,25 +151,29 @@ setMethod("convergenceHistory", "MSstatsWeightedSummary",
           })
 
 #' Extract cluster information from MSstatsWeightedSummary object
+#' @inheritParams featureData
 #' @export
 setGeneric("proteinClusters",
            function(weighted_summary) standardGeneric("proteinClusters"))
 #' Extract cluster information from MSstatsWeightedSummary object
-#' @param weighted_summary output of the getWeightedProteinSummary function
+#' @inheritParams featureData
 #' @return data.table
 setMethod("proteinClusters", "MSstatsWeightedSummary",
           function(weighted_summary) {
+              Run = Cluster = ProteinName = NULL
+
               feature_data = weighted_summary@FeatureLevelData
-              cluster_data = unique(feature_data[, .(Run, Cluster, ProteinName)])
+              cluster_data = unique(feature_data[, list(Run, Cluster, ProteinName)])
               cluster_data
           })
 
 #' Extract fitted PSM-level profiles from MSstatsWeightedSummary object
+#' @inheritParams featureData
 #' @export
 setGeneric("fittedProfiles",
            function(weighted_summary) standardGeneric("fittedProfiles"))
 #' Extract fitted PSM-level profiles from MSstatsWeightedSummary object
-#' @param weighted_summary output of the getWeightedProteinSummary function
+#' @inheritParams featureData
 #' @return data.table
 setMethod("fittedProfiles", "MSstatsWeightedSummary",
           function(weighted_summary) {
@@ -153,12 +182,14 @@ setMethod("fittedProfiles", "MSstatsWeightedSummary",
           })
 
 #' Create input for MSstatsTMT::groupComparisonTMT function
+#' @inheritParams featureData
+#' @param msstatstmt_output optional output of MSstatsTMT::proteinSummarization function
 #' @export
 setGeneric("makeMSstatsTMTInput",
            function(weighted_summary, msstatstmt_output = NULL)
                standardGeneric("makeMSstatsTMTInput"))
 #' Create input for MSstatsTMT::groupComparisonTMT function
-#' @param weighted_summary output of the getWeightedProteinSummary function
+#' @inheritParams featureData
 #' @param msstatstmt_output optional output of MSstatsTMT::proteinSummarization function
 #' @return list
 setMethod("makeMSstatsTMTInput", "MSstatsWeightedSummary",
@@ -182,16 +213,25 @@ setMethod("makeMSstatsTMTInput", "MSstatsWeightedSummary",
           })
 
 #' Create input for MSstats::groupComparison function
+#' @inheritParams featureData
+#' @param msstats_output optional output of MSstats::dataProcess function
 #' @export
 setGeneric("makeMSstatsInput",
            function(weighted_summary, msstats_output = NULL)
                standardGeneric("makeMSstatsInput"))
 #' Create input for MSstats::groupComparison function
-#' @param weighted_summary output of the getWeightedProteinSummary function
-#' @param msstatstmt_output optional output of MSstats::dataProcess function
+#' @inheritParams featureData
+#' @param msstats_output optional output of MSstats::dataProcess function
 #' @return list
 setMethod("makeMSstatsInput", "MSstatsWeightedSummary",
           function(weighted_summary, msstats_output = NULL) {
+              `:=` = PROTEIN = PEPTIDE = TRANSITION = FEATURE = PSM = LABEL = GROUP = more50missing = NULL
+              RUN = SUBJECT = FRACTION = originalRUN = censored = INTENSITY = MissingPercentage = NULL
+              ABUNDANCE = newABUNDANCE = predicted = remove = ProteinName = NumImputedFeature = NULL
+              Intensity = log2IntensityNormalized = NumMeasuredFeature = TotalGroupMeasurements = NULL
+              PeptideSequence = Charge = FragmentIon = ProductCharge = PSM = NULL
+              IsotopeLabelType = Condition = Run = BioReplicate = Fraction = NULL
+
               feature_data = data.table::copy(weighted_summary@FeatureLevelData)
               protein_data = data.table::copy(weighted_summary@ProteinLevelData)
 
@@ -225,9 +265,9 @@ setMethod("makeMSstatsInput", "MSstatsWeightedSummary",
                       remove = FALSE)]
                   cols = c("RUN", "Protein", "LogIntensities", "originalRUN",
                            "GROUP", "SUBJECT", "more50missing", "NumMeasuredFeature")
-                  setnames(protein_data,
-                           c("Run", "Abundance", "Condition", "BioReplicate"),
-                           c("originalRUN", "LogIntensities", "GROUP", "SUBJECT"))
+                  data.table::setnames(protein_data,
+                                       c("Run", "Abundance", "Condition", "BioReplicate"),
+                                       c("originalRUN", "LogIntensities", "GROUP", "SUBJECT"))
                   protein_data[, RUN := originalRUN]
                   protein_data[, more50missing := FALSE]
                   num_features = feature_data[!is.na(log2IntensityNormalized),

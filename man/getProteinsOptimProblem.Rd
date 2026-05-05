@@ -17,7 +17,7 @@ getProteinsOptimProblem(design_matrix, y, norm, norm_parameter, proteins, psms)
 
 \item{proteins}{vector of unique proteins}
 
-\item{vector}{of unique psms}
+\item{psms}{vector of unique psms}
 }
 \description{
 Get optimization problem for protein-level summaries

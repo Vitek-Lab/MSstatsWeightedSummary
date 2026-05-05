@@ -6,6 +6,11 @@
 \usage{
 makeMSstatsInput(weighted_summary, msstats_output = NULL)
 }
+\arguments{
+\item{weighted_summary}{output of the getWeightedProteinSummary function}
+
+\item{msstats_output}{optional output of MSstats::dataProcess function}
+}
 \description{
 Create input for MSstats::groupComparison function
 }

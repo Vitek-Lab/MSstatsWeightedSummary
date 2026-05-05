@@ -6,6 +6,11 @@
 \usage{
 weightsHistory(weighted_summary, shared_only = TRUE)
 }
+\arguments{
+\item{weighted_summary}{output of the getWeightedProteinSummary function}
+
+\item{shared_only}{logical, output data.table will only include shared peptides}
+}
 \description{
 Extract weights history from MSstatsWeightedSummary object
 }

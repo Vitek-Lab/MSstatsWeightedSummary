@@ -6,6 +6,9 @@
 \usage{
 convergenceHistory(weighted_summary)
 }
+\arguments{
+\item{weighted_summary}{output of the getWeightedProteinSummary function}
+}
 \description{
 Extract convergence history from MSstatsWeightedSummary object
 }

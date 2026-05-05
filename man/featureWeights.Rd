@@ -6,6 +6,14 @@
 \usage{
 featureWeights(weighted_summary, proteins = NULL, shared_only = TRUE)
 }
+\arguments{
+\item{weighted_summary}{output of the getWeightedProteinSummary function}
+
+\item{proteins}{optional character vector of proteins to extract. If NULL, all proteins
+will be returned}
+
+\item{shared_only}{logical, output data.table will only include shared peptides}
+}
 \description{
 Extract weights data from MSstatsWeightedSummary object
 }

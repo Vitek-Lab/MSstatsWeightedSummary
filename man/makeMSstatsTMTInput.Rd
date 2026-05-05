@@ -6,6 +6,11 @@
 \usage{
 makeMSstatsTMTInput(weighted_summary, msstatstmt_output = NULL)
 }
+\arguments{
+\item{weighted_summary}{output of the getWeightedProteinSummary function}
+
+\item{msstatstmt_output}{optional output of MSstatsTMT::proteinSummarization function}
+}
 \description{
 Create input for MSstatsTMT::groupComparisonTMT function
 }

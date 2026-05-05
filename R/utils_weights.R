@@ -6,6 +6,8 @@
 #' @keywords internal
 getPeptideProteinWeights = function(feature_data,
                                     norm = "Huber", norm_parameter = 1e-6) {
+    ProteinName = Weight = `:=` = NULL
+
     weights_design = getWeightsDesign(feature_data)
     design_matrix = weights_design[["x"]]
     y = weights_design[["y"]]
@@ -50,6 +52,8 @@ getPeptideProteinWeights = function(feature_data,
 #' @inheritParams getWeightedProteinSummary
 #' @keywords internal
 getWeightsDesign = function(feature_data) {
+    PSM = Channel = log2IntensityNormalized = ProteinName = CenteredAbundance = NULL
+
     intensities_tbl = unique(feature_data[, list(PSM, Channel, log2IntensityNormalized)])
 
     psms_intercept_tbl = unique(feature_data[, list(PSM, Channel, Present = 1)])
@@ -70,7 +74,7 @@ getWeightsDesign = function(feature_data) {
     )
     wide = data.table::as.data.table(wide)
 
-    y_full = wide$log2IntensityNormalized
+    y_full = wide[["log2IntensityNormalized"]]
     x_full = as.matrix(wide[, -(1:2), with = FALSE])
     x_full = x_full[, !(colnames(x_full) == "log2IntensityNormalized")]
     x_full = cbind(intercept = 1, x_full)

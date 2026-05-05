@@ -6,10 +6,13 @@
 #' will be used to sort the x-axis
 #'
 #' @return ggplot2 object
+#' @import ggplot2
 #'
 #' @export
 #'
 plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NULL) {
+    `:=` = Cluster = IsUnique = ProteinName = Peptide = Protein = Channel = NULL
+
     feature_plot_input = featureData(weighted_summary)[Cluster == cluster]
     feature_plot_input[, IsUnique := data.table::uniqueN(ProteinName) == 1,
                        by = "PSM"]
@@ -17,8 +20,8 @@ plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NUL
                                            levels = c("unique", "shared"),
                                            ordered = TRUE)]
 
-    protein_plot_input = proteinData(weighted_summary)[Protein %in% unique(feature_plot_input$ProteinName)]
-    setnames(protein_plot_input, "Protein", "ProteinName")
+    protein_plot_input = proteinData(weighted_summary)[Protein %in% unique(feature_plot_input[["ProteinName"]])]
+    data.table::setnames(protein_plot_input, "Protein", "ProteinName")
 
     if (!is.null(channel_order)) {
         feature_plot_input[, Channel := factor(Channel, levels = channel_order,
@@ -71,14 +74,16 @@ plotSummarizedProteins = function(weighted_summary, cluster, channel_order = NUL
 #' @export
 #'
 plotFittedProfiles = function(weighted_summary, cluster, channel_order = NULL) {
+    `:=` = Cluster = Profile = IsUnique = Peptide = Channel = Run = PSM = variable = ProteinName = NULL
+
     fitted_profiles = fittedProfiles(weighted_summary)[Cluster == cluster]
-    fitted_profiles = melt(fitted_profiles,
+    fitted_profiles = data.table::melt(fitted_profiles,
                            measure.vars = c("log2IntensityNormalized",
                                             "Predicted"),
                            variable.factor = FALSE)
     fitted_profiles[, Profile := ifelse(variable == "Predicted",
                                         "fitted", "observed")]
-    fitted_profiles[, IsUnique := uniqueN(ProteinName) == 1, by = "PSM"]
+    fitted_profiles[, IsUnique := data.table::uniqueN(ProteinName) == 1, by = "PSM"]
     fitted_profiles[, Peptide := ifelse(IsUnique, "unique", "shared")]
     fitted_profiles[, Peptide := factor(Peptide,
                                         levels = c("unique", "shared"),
