@@ -3,7 +3,7 @@
 #' The package extends existing MSstats and MSstatsTMT workflows to include shared peptides in input data for protein summarization.
 #' The summarization workflow is implemented in the \code{\link{getWeightedProteinSummary}} function. For example, check the package vignette
 #' `browseVignettes(package = "MSstatsWeightedSummary.")`.
-#' For the statistical details and background, please refer to the publication [](https://doi.org/10.1093/bioinformatics/btaf046).
+#' For the statistical details and background, please refer to the publication \link{https://doi.org/10.1093/bioinformatics/btaf046}.
 #' @keywords internal
 "_PACKAGE"
 
